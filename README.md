@@ -116,14 +116,14 @@ Complete, working examples for each framework:
 ### Django Example (✅ COMPLETE)
 
 ```bash
-cd examples/django_basic
+cd examples/django
 ./quickstart.sh
 python manage.py runserver
 ```
 
 Visit `http://localhost:8000` to see it in action!
 
-See [Django Example README](examples/django_basic/README.md) for detailed documentation.
+See [Django Example README](examples/django/README.md) for detailed documentation.
 
 ### Flask Example (🚧 Coming Soon)
 

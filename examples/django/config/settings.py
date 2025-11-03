@@ -139,8 +139,9 @@ X402_CONFIG = {
     # Which URL paths require payment
     # Supports glob patterns: '*', '/api/premium/*', etc.
     'protected_paths': [
-        '/api/premium/*',   # All premium API endpoints
-        '/api/paid/*',      # All paid API endpoints
+        '/api/random/premium',  # Premium random number (demo)
+        '/api/premium/*',       # All premium API endpoints
+        '/api/paid/*',          # All paid API endpoints
     ],
     
     # ===== Optional Settings =====

@@ -57,7 +57,14 @@ class X402PaymentProcessor:
             facilitator: Optional custom facilitator (auto-created if None)
         """
         self.config = config
-        self.facilitator = facilitator  # Will be populated in full implementation
+        
+        # Create facilitator if not provided
+        if facilitator is None:
+            from .facilitators import get_facilitator
+            self.facilitator = get_facilitator(config)
+        else:
+            self.facilitator = facilitator
+        
         self._payment_cache: Dict[str, SettlementResult] = {}
     
     def process_request(self, context: RequestContext) -> ProcessingResult:
@@ -97,14 +104,81 @@ class X402PaymentProcessor:
                 error='No X-PAYMENT header provided'
             )
         
-        # TODO: Implement full payment verification with facilitator
-        # For skeleton, just return basic structure
-        logger.info("Payment verification would happen here")
+        # Parse payment payload
+        try:
+            from x402.encoding import safe_base64_decode
+            payment_dict = json.loads(safe_base64_decode(context.payment_header))
+        except Exception as e:
+            logger.warning(f"Failed to parse payment header: {e}")
+            return ProcessingResult(
+                action='deny',
+                requirements=requirements,
+                error='Invalid payment header format'
+            )
         
+        # Find matching requirements
+        try:
+            from x402.types import PaymentPayload
+            from x402.common import find_matching_payment_requirements
+            
+            payment = PaymentPayload(**payment_dict)
+            
+            # Convert requirements to PaymentRequirements objects
+            from x402.types import PaymentRequirements
+            requirements_objects = [
+                PaymentRequirements(**req) if isinstance(req, dict) else req
+                for req in requirements
+            ]
+            
+            selected_requirements = find_matching_payment_requirements(
+                requirements_objects,
+                payment
+            )
+        except ImportError:
+            # Fallback if x402 package not available - use simple matching
+            selected_requirements = requirements[0] if requirements else None
+            if payment_dict.get('network') != (selected_requirements or {}).get('network'):
+                selected_requirements = None
+        except Exception as e:
+            logger.warning(f"Failed to match requirements: {e}")
+            selected_requirements = None
+        
+        if not selected_requirements:
+            return ProcessingResult(
+                action='deny',
+                requirements=requirements,
+                error='No matching payment requirements found'
+            )
+        
+        # Convert to dict if it's a pydantic model
+        req_dict = selected_requirements
+        if hasattr(selected_requirements, 'model_dump'):
+            req_dict = selected_requirements.model_dump(by_alias=True)
+        elif hasattr(selected_requirements, 'dict'):
+            req_dict = selected_requirements.dict(by_alias=True)
+        
+        # Verify payment with facilitator
+        verification = self.facilitator.verify(payment_dict, req_dict)
+        
+        is_valid = verification.get('isValid') or verification.get('is_valid')
+        if not is_valid:
+            invalid_reason = (
+                verification.get('invalidReason') or
+                verification.get('invalid_reason') or
+                'Unknown error'
+            )
+            logger.info(f"Payment verification failed: {invalid_reason}")
+            return ProcessingResult(
+                action='deny',
+                requirements=requirements,
+                error=f'Invalid payment: {invalid_reason}'
+            )
+        
+        logger.info(f"Payment verified from {verification.get('payer')}")
         return ProcessingResult(
-            action='deny',
-            requirements=requirements,
-            error='Payment verification not yet implemented in skeleton'
+            action='allow',
+            payment_verified=True,
+            payer_address=verification.get('payer')
         )
     
     def settle_payment(self, context: RequestContext) -> SettlementResult:
@@ -137,20 +211,75 @@ class X402PaymentProcessor:
                 logger.info("Using cached settlement result")
                 return cached
         
-        # TODO: Implement full settlement with facilitator
-        # For skeleton, return basic structure
-        logger.info("Payment settlement would happen here")
-        
-        result = SettlementResult(
-            success=False,
-            error='Payment settlement not yet implemented in skeleton'
-        )
-        
-        # Cache result
-        if self.config.replay_cache_enabled and context.payment_header:
-            self._cache_settlement(context.payment_header, result)
-        
-        return result
+        try:
+            # Parse payment
+            from x402.encoding import safe_base64_decode
+            payment_dict = json.loads(safe_base64_decode(context.payment_header))
+            
+            # Build requirements
+            requirements = self._build_payment_requirements(context)
+            
+            # Find matching requirements
+            try:
+                from x402.types import PaymentPayload
+                from x402.common import find_matching_payment_requirements
+                from x402.types import PaymentRequirements
+                
+                payment = PaymentPayload(**payment_dict)
+                requirements_objects = [
+                    PaymentRequirements(**req) if isinstance(req, dict) else req
+                    for req in requirements
+                ]
+                selected = find_matching_payment_requirements(requirements_objects, payment)
+            except ImportError:
+                selected = requirements[0] if requirements else None
+            
+            if not selected:
+                return SettlementResult(
+                    success=False,
+                    error='No matching requirements for settlement'
+                )
+            
+            # Convert to dict
+            req_dict = selected
+            if hasattr(selected, 'model_dump'):
+                req_dict = selected.model_dump(by_alias=True)
+            elif hasattr(selected, 'dict'):
+                req_dict = selected.dict(by_alias=True)
+            
+            # Settle via facilitator
+            settlement = self.facilitator.settle(payment_dict, req_dict)
+            
+            # Check success
+            success = settlement.get('success', False)
+            if not success:
+                error = settlement.get('error', 'Settlement failed')
+                logger.error(f"Settlement failed: {error}")
+                result = SettlementResult(success=False, error=error)
+            else:
+                # Encode response
+                encoded = base64.b64encode(
+                    json.dumps(settlement).encode('utf-8')
+                ).decode('ascii')
+                
+                result = SettlementResult(
+                    success=True,
+                    transaction_hash=settlement.get('transaction'),
+                    encoded_response=encoded,
+                    receipt=settlement.get('receipt')
+                )
+                
+                logger.info(f"Settlement successful: {result.transaction_hash}")
+            
+            # Cache result
+            if self.config.replay_cache_enabled and context.payment_header:
+                self._cache_settlement(context.payment_header, result)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Settlement error: {e}", exc_info=True)
+            return SettlementResult(success=False, error=str(e))
     
     def _is_protected_path(self, path: str) -> bool:
         """Check if path matches protected patterns.
@@ -196,15 +325,52 @@ class X402PaymentProcessor:
         Returns:
             List of PaymentRequirements (usually just one)
         """
-        # TODO: Use x402.common.process_price_to_atomic_amount
-        # For skeleton, return placeholder
-        return [{
-            'scheme': 'exact',
-            'network': self.config.network,
-            'price': self.config.price,
-            'payTo': self.config.pay_to_address,
-            'resource': context.absolute_url,
-        }]
+        try:
+            from x402.common import process_price_to_atomic_amount
+            from x402.types import PaymentRequirements
+            
+            # Convert price to atomic units and get EIP-712 domain
+            max_amount, asset, eip712_domain = process_price_to_atomic_amount(
+                self.config.price,
+                self.config.network
+            )
+            
+            return [
+                PaymentRequirements(
+                    scheme='exact',
+                    network=self.config.network,
+                    asset=asset,
+                    max_amount_required=max_amount,
+                    resource=context.absolute_url,
+                    description=self.config.description,
+                    mime_type=self.config.mime_type,
+                    pay_to=self.config.pay_to_address,
+                    max_timeout_seconds=self.config.max_timeout_seconds,
+                    output_schema={
+                        'input': {
+                            'type': 'http',
+                            'method': context.method.upper(),
+                            'discoverable': self.config.discoverable,
+                        },
+                        'output': {'type': self.config.mime_type},
+                    },
+                    extra=eip712_domain,
+                )
+            ]
+        except ImportError:
+            # Fallback if x402 package not available
+            logger.warning("x402 package not available, using fallback requirements")
+            return [{
+                'scheme': 'exact',
+                'network': self.config.network,
+                'asset': '0x0000000000000000000000000000000000000000',
+                'maxAmountRequired': '10000',
+                'resource': context.absolute_url,
+                'description': self.config.description,
+                'mimeType': self.config.mime_type,
+                'payTo': self.config.pay_to_address,
+                'maxTimeoutSeconds': self.config.max_timeout_seconds,
+            }]
     
     def _get_cached_settlement(
         self, 

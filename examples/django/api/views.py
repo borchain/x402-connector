@@ -4,12 +4,68 @@ This module shows different use cases:
 - Public endpoints (no payment required)
 - Premium endpoints (payment required via path matching)
 - Different types of paid content (data, AI, analytics)
+- Random number generator demo (free vs paid)
 """
 
 import random
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+
+
+# =============================================================================
+# DEMO PAGE
+# =============================================================================
+
+def index(request):
+    """Demo homepage with interactive buttons."""
+    return render(request, 'index.html')
+
+
+# =============================================================================
+# RANDOM NUMBER GENERATOR DEMO
+# =============================================================================
+
+@require_http_methods(["GET"])
+def random_free(request):
+    """Free random number generator (1-6 digits).
+    
+    No payment required - publicly accessible.
+    """
+    min_val = 1
+    max_val = 6
+    number = random.randint(min_val, max_val)
+    
+    return JsonResponse({
+        'number': number,
+        'min': min_val,
+        'max': max_val,
+        'type': 'free',
+        'timestamp': timezone.now().isoformat(),
+    })
+
+
+@require_http_methods(["GET"])
+def random_premium(request):
+    """Premium random number generator (7+ digits).
+    
+    Requires payment - protected by x402 middleware.
+    Path matches '/api/random/premium' which is in protected_paths.
+    """
+    min_val = 1000000
+    max_val = 9999999
+    number = random.randint(min_val, max_val)
+    
+    return JsonResponse({
+        'number': number,
+        'min': min_val,
+        'max': max_val,
+        'type': 'premium',
+        'digits': len(str(number)),
+        'timestamp': timezone.now().isoformat(),
+        'note': 'This number required payment to generate!',
+    })
 
 
 # =============================================================================

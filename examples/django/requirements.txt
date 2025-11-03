@@ -1,0 +1,14 @@
+# Django
+Django>=5.0
+
+# Install x402-connector from local source (parent directory)
+# Since package is not published to PyPI yet
+-e ../../[django]
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Optional: For production
+gunicorn>=21.2.0
+whitenoise>=6.6.0
+

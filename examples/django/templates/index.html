@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>x402-connector Django Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .demo-section {
+            margin-bottom: 30px;
+        }
+        
+        .demo-title {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-free {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge-paid {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            background: #f8fafc;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .result-info {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .error {
+            background: #fee2e2;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+        
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 30px 0;
+        }
+        
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 30px;
+        }
+        
+        .info-box h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .info-box p {
+            color: #1e40af;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .info-box code {
+            background: #dbeafe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 x402 Random Number Generator</h1>
+        <p class="subtitle">Demonstrating HTTP 402 Payment Required</p>
+        
+        <!-- Free Random Number -->
+        <div class="demo-section">
+            <div class="demo-title">
+                <span>Free Random Number</span>
+                <span class="badge badge-free">FREE</span>
+            </div>
+            <p class="description">
+                Generate a random number between 1-6 (single digit). No payment required!
+            </p>
+            <button onclick="getFreeNumber()" id="freeBtn">
+                🆓 Generate Free Number
+            </button>
+            <div class="result" id="freeResult"></div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Paid Random Number -->
+        <div class="demo-section">
+            <div class="demo-title">
+                <span>Premium Random Number</span>
+                <span class="badge badge-paid">💰 $0.01 USDC</span>
+            </div>
+            <p class="description">
+                Generate a random number with 7+ digits (1000000-9999999). 
+                Requires payment via x402 protocol!
+            </p>
+            <button onclick="getPaidNumber()" id="paidBtn">
+                💎 Generate Premium Number
+            </button>
+            <div class="result" id="paidResult"></div>
+        </div>
+        
+        <!-- Info Box -->
+        <div class="info-box">
+            <h3>ℹ️ How it works</h3>
+            <p>
+                <strong>Free:</strong> Normal HTTP request → 200 OK
+            </p>
+            <p>
+                <strong>Paid:</strong> First request → <code>402 Payment Required</code><br>
+                With valid payment → 200 OK + premium number
+            </p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                This demo shows how x402-connector protects endpoints based on URL patterns.
+                The paid endpoint requires payment automatically - no code changes needed!
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        async function getFreeNumber() {
+            const btn = document.getElementById('freeBtn');
+            const result = document.getElementById('freeResult');
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 Generating...';
+            
+            try {
+                const response = await fetch('/api/random/free');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <div class="result-number">${data.number}</div>
+                        <div class="result-info">
+                            ✅ Free number generated!<br>
+                            Range: ${data.min}-${data.max}
+                        </div>
+                    `;
+                    result.classList.remove('error');
+                } else {
+                    throw new Error(data.error || 'Failed to generate number');
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="result-info">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+                result.classList.add('error');
+            }
+            
+            result.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = '🆓 Generate Free Number';
+        }
+        
+        async function getPaidNumber() {
+            const btn = document.getElementById('paidBtn');
+            const result = document.getElementById('paidResult');
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 Checking payment...';
+            
+            try {
+                const response = await fetch('/api/random/premium');
+                
+                if (response.status === 402) {
+                    // Payment required!
+                    const data = await response.json();
+                    result.innerHTML = `
+                        <div class="result-info">
+                            🔒 <strong>Payment Required!</strong><br><br>
+                            This endpoint requires payment of <strong>$0.01 USDC</strong>.<br><br>
+                            In a real implementation, you would:<br>
+                            1. Sign an EIP-3009 payment authorization<br>
+                            2. Include it in the X-PAYMENT header<br>
+                            3. Retry the request<br><br>
+                            <strong>Status:</strong> ${response.status} ${response.statusText}<br>
+                            <strong>Network:</strong> ${data.accepts[0]?.network || 'base-sepolia'}<br>
+                            <strong>Asset:</strong> ${data.accepts[0]?.asset || 'USDC'}<br>
+                            <strong>Amount:</strong> ${data.accepts[0]?.maxAmountRequired || '10000'} (atomic units)
+                        </div>
+                    `;
+                    result.classList.add('error');
+                } else if (response.ok) {
+                    const data = await response.json();
+                    result.innerHTML = `
+                        <div class="result-number">${data.number}</div>
+                        <div class="result-info">
+                            ✅ Premium number generated!<br>
+                            Range: ${data.min}-${data.max}<br>
+                            💰 Payment settled on-chain
+                        </div>
+                    `;
+                    result.classList.remove('error');
+                } else {
+                    throw new Error('Unexpected response');
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="result-info">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+                result.classList.add('error');
+            }
+            
+            result.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = '💎 Generate Premium Number';
+        }
+    </script>
+</body>
+</html>
+

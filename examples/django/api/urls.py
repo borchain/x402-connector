@@ -6,6 +6,10 @@ from . import views
 app_name = 'api'
 
 urlpatterns = [
+    # Demo random number generator
+    path('random/free', views.random_free, name='random_free'),
+    path('random/premium', views.random_premium, name='random_premium'),
+    
     # Public endpoints (no payment required)
     path('public/info', views.public_info, name='public_info'),
     path('public/status', views.public_status, name='public_status'),

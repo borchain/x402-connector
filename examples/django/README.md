@@ -15,7 +15,7 @@ This example shows:
 ## 📁 Project Structure
 
 ```
-django_basic/
+django/
 ├── README.md              # This file
 ├── requirements.txt       # Python dependencies
 ├── manage.py             # Django management script
@@ -429,7 +429,7 @@ python manage.py runserver --verbosity=2
 ## 💡 Example Projects
 
 Check other examples in the `examples/` directory:
-- `django_basic/` - This example (simple API)
+- `django/` - This example (simple API)
 - `django_ai/` - AI inference marketplace
 - `django_analytics/` - Data analytics API
 - `django_content/` - Content paywall
