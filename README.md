@@ -109,6 +109,38 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design documentation.
 - [Technical Specification](TECHNICAL.md) - Implementation details
 - [Integration Guide](INTEGRATION.md) - Step-by-step implementation plan
 
+## 📚 Examples
+
+Complete, working examples for each framework:
+
+### Django Example (✅ COMPLETE)
+
+```bash
+cd examples/django_basic
+./quickstart.sh
+python manage.py runserver
+```
+
+Visit `http://localhost:8000` to see it in action!
+
+See [Django Example README](examples/django_basic/README.md) for detailed documentation.
+
+### Flask Example (🚧 Coming Soon)
+
+```bash
+cd examples/flask_basic
+./quickstart.sh
+flask run
+```
+
+### FastAPI Example (🚧 Coming Soon)
+
+```bash
+cd examples/fastapi_basic
+./quickstart.sh
+uvicorn main:app
+```
+
 ## 🧪 Testing
 
 ```bash

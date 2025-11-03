@@ -1,0 +1,11 @@
+# Core Django and x402-connector
+Django>=5.0
+x402-connector[django]
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Optional: For production
+gunicorn>=21.2.0
+whitenoise>=6.6.0
+

@@ -17,7 +17,7 @@ Basic usage:
     from x402_connector.fastapi import X402Middleware
     app.add_middleware(X402Middleware, config={...})
 
-For more information, see: https://github.com/yourusername/x402-connector
+For more information, see: https://github.com/borchain/x402-connector
 """
 
 __version__ = "0.1.0"

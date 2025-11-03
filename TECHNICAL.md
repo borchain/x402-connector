@@ -1111,10 +1111,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/x402-connector"
+Homepage = "https://github.com/borchain/x402-connector"
 Documentation = "https://x402-connector.readthedocs.io"
-Repository = "https://github.com/yourusername/x402-connector"
-Issues = "https://github.com/yourusername/x402-connector/issues"
+Repository = "https://github.com/borchain/x402-connector"
+Issues = "https://github.com/borchain/x402-connector/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/x402_connector"]

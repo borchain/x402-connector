@@ -10,7 +10,7 @@ Be respectful, inclusive, and professional. We're all here to build great softwa
 
 ### Reporting Bugs
 
-1. Check if the bug has already been reported in [Issues](https://github.com/yourusername/x402-connector/issues)
+1. Check if the bug has already been reported in [Issues](https://github.com/borchain/x402-connector/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce
@@ -20,7 +20,7 @@ Be respectful, inclusive, and professional. We're all here to build great softwa
 
 ### Suggesting Features
 
-1. Check if the feature has been requested in [Issues](https://github.com/yourusername/x402-connector/issues)
+1. Check if the feature has been requested in [Issues](https://github.com/borchain/x402-connector/issues)
 2. Create a new issue with:
    - Clear use case
    - Why this would be valuable
@@ -33,7 +33,7 @@ Be respectful, inclusive, and professional. We're all here to build great softwa
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/x402-connector.git
+git clone https://github.com/borchain/x402-connector.git
 cd x402-connector
 
 # Create virtual environment
@@ -265,8 +265,8 @@ x402-connector/
 
 ## Questions?
 
-- **General questions** - Open a [Discussion](https://github.com/yourusername/x402-connector/discussions)
-- **Bug reports** - Open an [Issue](https://github.com/yourusername/x402-connector/issues)
+- **General questions** - Open a [Discussion](https://github.com/borchain/x402-connector/discussions)
+- **Bug reports** - Open an [Issue](https://github.com/borchain/x402-connector/issues)
 - **Security issues** - Email security@example.com (do not open public issue)
 
 ## License
