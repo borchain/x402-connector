@@ -1,25 +1,13 @@
-"""URL patterns for the example API."""
+"""URL configuration for the example x402 API."""
 
 from django.urls import path
 from . import views
 
-app_name = 'api'
-
 urlpatterns = [
-    # Demo random number generator
-    path('random/free', views.random_free, name='random_free'),
-    path('random/premium', views.random_premium, name='random_premium'),
+    # Demo page
+    path('', views.index, name='index'),
     
-    # Public endpoints (no payment required)
-    path('public/info', views.public_info, name='public_info'),
-    path('public/status', views.public_status, name='public_status'),
-    
-    # Premium endpoints (payment required - matched by /api/premium/*)
-    path('premium/data', views.premium_data, name='premium_data'),
-    path('premium/ai', views.ai_inference, name='ai_inference'),
-    path('premium/analytics', views.analytics, name='analytics'),
-    
-    # Paid content (payment required - matched by /api/paid/*)
-    path('paid/content', views.paid_content, name='paid_content'),
+    # API endpoints
+    path('api/random', views.random_number, name='random'),
+    path('api/premium/random', views.premium_random_number, name='premium_random'),
 ]
-

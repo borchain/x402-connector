@@ -1,408 +1,351 @@
 # Quick Start Guide
 
-Welcome to x402-connector! This guide will help you understand the project and start contributing.
+Get x402-connector running in 5 minutes.
 
-## 🎯 What You Have
+## Prerequisites
 
-This repository contains a **complete architecture and skeleton** for a universal Python SDK for the x402 payment protocol. It supports multiple frameworks (Django, Flask, FastAPI) with a clean, framework-agnostic core.
+- Python 3.10+
+- pip or poetry
+- Solana wallet (for production) or devnet wallet (for testing)
 
-## 📁 Project Structure
+## Installation
 
-```
-x402-connector/
-├── README.md              # Main project README
-├── OVERVIEW.md            # High-level vision and design
-├── ARCHITECTURE.md        # Technical architecture deep-dive
-├── TECHNICAL.md           # Implementation details
-├── INTEGRATION.md         # Step-by-step implementation plan
-├── PROJECT_SUMMARY.md     # Complete project summary
-├── CONTRIBUTING.md        # Contribution guidelines
-├── QUICKSTART.md          # This file
-│
-├── src/x402_connector/    # Source code
-│   ├── __init__.py        # Package exports
-│   └── core/              # Framework-agnostic core
-│       ├── __init__.py
-│       ├── config.py      # Configuration system ✅
-│       ├── context.py     # Request/result abstractions ✅
-│       ├── adapters.py    # Base adapter interface ✅
-│       └── processor.py   # Core payment processor ✅
-│
-├── tests/                 # Test suite
-│   ├── test_core_config.py    # Config tests ✅
-│   └── test_core_context.py   # Context tests ✅
-│
-├── .github/workflows/     # CI/CD
-│   └── test.yml          # GitHub Actions workflow ✅
-│
-├── pyproject.toml        # Package configuration ✅
-├── .gitignore            # Git ignore patterns ✅
-└── setup_dev.sh          # Development setup script ✅
-```
-
-## 🚀 Quick Setup (30 seconds)
+### Option 1: pip (Recommended)
 
 ```bash
-# Clone if you haven't already
-cd /Users/borker/coin_projects/x402-connector
+# Core + Django
+pip install x402-connector[django]
 
-# Run the setup script
-./setup_dev.sh
+# Core + Flask
+pip install x402-connector[flask]
 
-# Or manually:
-python -m venv .venv
-source .venv/bin/activate
+# Core + FastAPI
+pip install x402-connector[fastapi]
+
+# Everything
+pip install x402-connector[all]
+```
+
+### Option 2: Development Install
+
+```bash
+git clone https://github.com/yourusername/x402-connector.git
+cd x402-connector
 pip install -e ".[dev,tests]"
-pytest -v
+pytest  # Verify installation
 ```
 
-## 📖 Documentation Reading Order
+## 1. Django Integration
 
-**For Understanding the Project:**
-1. **README.md** (5 min) - Overview and quick examples
-2. **OVERVIEW.md** (10 min) - Vision, use cases, comparison
-3. **PROJECT_SUMMARY.md** (10 min) - What's done, what's next
-4. **ARCHITECTURE.md** (20 min) - Technical design decisions
-5. **TECHNICAL.md** (30 min) - Implementation details
-
-**For Contributing:**
-1. **INTEGRATION.md** - Step-by-step implementation roadmap
-2. **CONTRIBUTING.md** - Code style, workflow, testing
-3. Pick a task from INTEGRATION.md and start coding!
-
-## ✅ What's Already Done
-
-### Core Foundation (Phase 1 - Partially Complete)
-
-- ✅ **Configuration System** (`core/config.py`)
-  - `X402Config` with full validation
-  - Support for dict, env vars, and framework configs
-  - Local and remote facilitator configs
-
-- ✅ **Context Abstractions** (`core/context.py`)
-  - `RequestContext` - Framework-agnostic request
-  - `ProcessingResult` - Payment verification result
-  - `SettlementResult` - Settlement result
-
-- ✅ **Base Adapter** (`core/adapters.py`)
-  - Interface for all framework adapters
-  - Clear contract and documentation
-
-- ✅ **Core Processor** (`core/processor.py`)
-  - Skeleton implementation
-  - Path protection logic
-  - Caching infrastructure
-
-- ✅ **Tests** (`tests/`)
-  - Configuration tests (15+ cases)
-  - Context tests
-  - Demonstrates testing patterns
-
-- ✅ **Infrastructure**
-  - Project structure
-  - pyproject.toml with dependencies
-  - GitHub Actions CI/CD
-  - .gitignore
-  - Development setup script
-
-## 🚧 What Needs to Be Done
-
-### Immediate (This Week)
-
-1. **Complete Core Facilitator**
-   - Port facilitator code from django-x402
-   - Remove Django dependencies
-   - Make it framework-agnostic
-   - Add tests
-
-2. **Complete Core Processor**
-   - Implement payment verification
-   - Implement settlement logic
-   - Integrate with facilitators
-   - Add comprehensive tests
-
-3. **Achieve 90%+ Test Coverage**
-   - Unit tests for all core functions
-   - Edge case testing
-   - Error handling tests
-
-### Next (Weeks 2-4)
-
-4. **Django Adapter** (Week 2)
-5. **Flask Adapter** (Week 3)
-6. **FastAPI Adapter** (Week 4)
-
-See [INTEGRATION.md](INTEGRATION.md) for detailed roadmap.
-
-## 🎓 Understanding the Architecture
-
-### The Big Idea
-
-Instead of building a Django-specific library (like django-x402), we're building:
-
-```
-┌──────────────────────────────────────────────────┐
-│  Framework-Agnostic Core (One implementation)    │
-│  • Configuration                                 │
-│  • Payment verification                          │
-│  • Settlement logic                              │
-│  • Path protection                               │
-└──────────────────────────────────────────────────┘
-                     ↓
-┌──────────────────────────────────────────────────┐
-│  Thin Framework Adapters (Simple translators)    │
-│  • Django adapter                                │
-│  • Flask adapter                                 │
-│  • FastAPI adapter                               │
-│  • ... more ...                                  │
-└──────────────────────────────────────────────────┘
-```
-
-**Benefits:**
-- Write payment logic once, use everywhere
-- Easy to test (no framework overhead)
-- Easy to add new frameworks
-- Better code organization
-
-### Key Abstractions
-
-**RequestContext** - Extracts what we need from any framework:
-```python
-RequestContext(
-    path='/api/premium',
-    method='GET',
-    headers={'X-Payment': '...'},
-    absolute_url='https://example.com/api/premium'
-)
-```
-
-**BaseAdapter** - Contract for framework integrations:
-```python
-class DjangoAdapter(BaseAdapter):
-    def extract_request_context(self, django_request):
-        # Convert Django HttpRequest → RequestContext
-        
-    def create_payment_required_response(self, error, requirements, is_browser):
-        # Return Django HttpResponse with 402
-```
-
-**X402PaymentProcessor** - Core logic:
-```python
-processor = X402PaymentProcessor(config)
-result = processor.process_request(context)
-
-if result.action == 'allow':
-    # Continue to endpoint
-elif result.action == 'deny':
-    # Return 402
-```
-
-## 🛠️ Development Workflow
-
-### 1. Pick a Task
-
-See [INTEGRATION.md](INTEGRATION.md) for prioritized tasks.
-
-Example: "Complete core facilitator implementation"
-
-### 2. Create a Branch
+### Step 1: Install
 
 ```bash
-git checkout -b feat/complete-core-facilitator
+pip install x402-connector[django]
 ```
 
-### 3. Implement
+### Step 2: Configure
 
-```bash
-# Edit code
-vim src/x402_connector/core/facilitators.py
-
-# Run tests continuously
-pytest tests/ -v --tb=short
-
-# Check code quality
-black src/ tests/
-ruff check src/ tests/
-mypy src/
-```
-
-### 4. Test
-
-```bash
-# Run all tests
-pytest -v
-
-# Run specific test file
-pytest tests/test_core_config.py -v
-
-# Run with coverage
-pytest --cov=x402_connector --cov-report=html
-open htmlcov/index.html
-```
-
-### 5. Commit & Push
-
-```bash
-git add .
-git commit -m "feat: complete core facilitator implementation"
-git push origin feat/complete-core-facilitator
-```
-
-### 6. Create PR
-
-Open Pull Request on GitHub with:
-- Clear description
-- What was changed
-- How to test
-- Link to issue
-
-## 🧪 Testing Guidelines
-
-### Test Organization
-
-```
-tests/
-├── test_core_config.py      # Configuration tests
-├── test_core_context.py     # Context tests
-├── test_core_processor.py   # Processor tests (to be added)
-└── test_core_facilitators.py # Facilitator tests (to be added)
-```
-
-### Writing Good Tests
+Edit `settings.py`:
 
 ```python
-def test_descriptive_name_of_what_is_tested():
-    """Test that X does Y when Z."""
-    # Arrange
-    config = X402Config(...)
-    
-    # Act
-    result = do_something(config)
-    
-    # Assert
-    assert result == expected
+# Add middleware
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'x402_connector.django.X402Middleware',  # ← Add this
+    # ... other middleware
+]
+
+# Configure x402
+X402_CONFIG = {
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
+    'price': '$0.01',  # Default price
+    'network': 'solana-devnet',  # or 'solana-mainnet'
+}
 ```
 
-### Running Tests
-
-```bash
-# All tests
-pytest
-
-# Specific file
-pytest tests/test_core_config.py
-
-# Specific test
-pytest tests/test_core_config.py::test_minimal_config
-
-# With coverage
-pytest --cov=x402_connector --cov-report=term-missing
-
-# Watch mode (requires pytest-watch)
-ptw
-```
-
-## 📚 Key Concepts
-
-### Configuration
-
-Load config from multiple sources:
+### Step 3: Protect Endpoints
 
 ```python
-# From dict
-config = X402Config.from_dict({
-    'network': 'base',
+# views.py
+from django.http import JsonResponse
+from x402_connector.django import require_payment
+
+# Free endpoint - no decorator
+def free_data(request):
+    return JsonResponse({'data': 'public data'})
+
+# Paid endpoint - with decorator
+@require_payment(price='$0.01')
+def premium_data(request):
+    return JsonResponse({'data': 'premium content'})
+
+# Custom price per endpoint
+@require_payment(price='$0.10')
+def expensive_ai_call(request):
+    return JsonResponse({'result': 'AI response'})
+```
+
+### Step 4: Set Environment Variables
+
+```bash
+# .env
+X402_SIGNER_KEY=your_base58_private_key
+X402_PAY_TO_ADDRESS=YourSolanaAddress
+```
+
+### Step 5: Run
+
+```bash
+python manage.py runserver
+```
+
+Visit `http://localhost:8000/free_data` - works without payment
+Visit `http://localhost:8000/premium_data` - returns 402 Payment Required
+
+## 2. Flask Integration
+
+### Step 1: Install
+
+```bash
+pip install x402-connector[flask]
+```
+
+### Step 2: Create App
+
+```python
+# app.py
+from flask import Flask, jsonify
+from x402_connector.flask import X402, require_payment
+import os
+
+app = Flask(__name__)
+
+# Initialize x402
+x402 = X402(app, config={
+    'pay_to_address': os.getenv('X402_PAY_TO_ADDRESS'),
     'price': '$0.01',
-    'pay_to_address': '0x...'
+    'network': 'solana-devnet',
 })
 
-# From environment
-config = X402Config.from_env()
+@app.route('/free')
+def free_endpoint():
+    return jsonify({'data': 'free'})
 
-# Direct
-config = X402Config(
-    network='base',
+@app.route('/premium')
+@require_payment(price='$0.01')
+def premium_endpoint():
+    return jsonify({'data': 'premium'})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+### Step 3: Run
+
+```bash
+export X402_SIGNER_KEY=your_key
+export X402_PAY_TO_ADDRESS=your_address
+python app.py
+```
+
+## 3. FastAPI Integration
+
+### Step 1: Install
+
+```bash
+pip install x402-connector[fastapi]
+```
+
+### Step 2: Create App
+
+```python
+# main.py
+from fastapi import FastAPI
+from x402_connector.fastapi import X402Middleware, require_payment
+import os
+
+app = FastAPI()
+
+# Add middleware
+app.add_middleware(
+    X402Middleware,
+    pay_to_address=os.getenv('X402_PAY_TO_ADDRESS'),
     price='$0.01',
-    pay_to_address='0x...'
+    network='solana-devnet',
 )
+
+@app.get('/free')
+async def free_endpoint():
+    return {'data': 'free'}
+
+@app.get('/premium')
+@require_payment(price='$0.01')
+async def premium_endpoint():
+    return {'data': 'premium'}
 ```
 
-### Request Processing Flow
+### Step 3: Run
 
-```
-1. Request arrives → Framework adapter
-2. Extract RequestContext
-3. Pass to core processor
-4. Check if path protected
-5. Verify payment if present
-6. Return allow/deny
-7. If allow, call endpoint
-8. If 2xx, settle payment
-9. Add payment response header
-10. Return to client
+```bash
+export X402_SIGNER_KEY=your_key
+export X402_PAY_TO_ADDRESS=your_address
+uvicorn main:app --reload
 ```
 
-### Facilitator Modes
+## Testing
 
-- **local**: Self-hosted, verify and settle locally
-- **remote**: Use external facilitator service
-- **hybrid**: Verify locally, settle via service
+### Test Free Endpoint
 
-## 🤔 Common Questions
+```bash
+curl http://localhost:8000/free
+# {"data": "free"}
+```
 
-**Q: Where do I start?**
-A: Read OVERVIEW.md, then INTEGRATION.md. Start with completing the core facilitator.
+### Test Paid Endpoint (No Payment)
 
-**Q: Can I run the code now?**
-A: The skeleton is there, but payment processing is not yet implemented. Tests run but some will fail/skip.
+```bash
+curl -i http://localhost:8000/premium
+# HTTP/1.1 402 Payment Required
+# {
+#   "status": 402,
+#   "message": "Payment Required",
+#   "accepts": [{
+#     "network": "solana-devnet",
+#     "asset": "USDC",
+#     "amount": "10000",
+#     "payTo": "YOUR_ADDRESS"
+#   }]
+# }
+```
 
-**Q: How does this compare to django-x402?**
-A: We're taking the best parts (facilitator logic) and making it framework-agnostic with better architecture.
+### Test Paid Endpoint (With Payment)
 
-**Q: What if I want to add support for Framework X?**
-A: Create an adapter that implements BaseAdapter. See CONTRIBUTING.md for details.
+```bash
+# 1. Sign payment with wallet (get signature)
+# 2. Send request with payment
+curl -H "X-PAYMENT: {payment_signature_json}" http://localhost:8000/premium
+# HTTP/1.1 200 OK
+# {"data": "premium"}
+```
 
-**Q: Where can I ask questions?**
-A: Open a GitHub Discussion or Issue.
+## Running the Example
 
-## 🎯 Next Actions
+The fastest way to see it working:
 
-**If you want to understand the project:**
-1. Read OVERVIEW.md
-2. Read ARCHITECTURE.md
-3. Explore the code in `src/x402_connector/core/`
+```bash
+cd examples/django
+./quickstart.sh
+python manage.py runserver
+```
 
-**If you want to start coding:**
-1. Read INTEGRATION.md
-2. Pick a task from Phase 1
-3. Read CONTRIBUTING.md
-4. Start implementing and testing
+Open browser to `http://localhost:8000` and click the buttons!
 
-**If you want to contribute:**
-1. Fork the repository
-2. Read CONTRIBUTING.md
-3. Pick an issue or task
-4. Submit a PR
+## Key Concepts
 
-## 📞 Getting Help
+### 1. Decorators vs Middleware
 
-- **General questions**: GitHub Discussions
-- **Bug reports**: GitHub Issues
-- **Feature requests**: GitHub Issues
-- **Security issues**: Email security@example.com
+**Middleware** - Protects paths by pattern:
+```python
+X402_CONFIG = {
+    'protected_paths': ['/api/premium/*'],
+}
+```
 
-## 🎉 Welcome!
+**Decorator** - Protects specific views:
+```python
+@require_payment(price='$0.01')
+def my_view(request):
+    pass
+```
 
-You now have everything you need to start building x402-connector. The architecture is sound, the skeleton is in place, and the roadmap is clear.
+Use both together for maximum flexibility!
 
-**Let's build something awesome!** 🚀
+### 2. Price Formats
+
+All of these work:
+
+```python
+price='$0.01'          # USD amount
+price='10000'          # Atomic units (0.01 USDC = 10000 units)
+price='0.01 USDC'      # Explicit token
+```
+
+### 3. Networks
+
+```python
+'network': 'solana-mainnet'    # Production
+'network': 'solana-devnet'     # Testing
+'network': 'solana-testnet'    # Staging
+```
+
+### 4. Wallet Keys
+
+**Two different keys:**
+
+1. `PAY_TO_ADDRESS` - Where payments go (can be cold wallet)
+2. `SIGNER_KEY` - Server's hot wallet for settlement (pays gas)
+
+```bash
+# Safe setup
+X402_PAY_TO_ADDRESS=YourColdWallet     # Secure, offline
+X402_SIGNER_KEY=ServerHotWallet        # Server only, minimal funds
+```
+
+## Next Steps
+
+1. ✅ Follow this guide
+2. 📖 Read [API Reference](API.md) for advanced features
+3. 💻 Check [examples/](examples/) for complete code
+4. 🧪 Test on devnet before mainnet
+5. 🚀 Deploy to production!
+
+## Troubleshooting
+
+### "No module named 'x402_connector'"
+
+```bash
+pip install x402-connector
+```
+
+### "X402_SIGNER_KEY not found"
+
+Set environment variable:
+```bash
+export X402_SIGNER_KEY=your_key
+```
+
+Or in code:
+```python
+X402_CONFIG = {
+    'signer_key': 'your_key',  # Not recommended for production!
+}
+```
+
+### "Payment verification failed"
+
+Check:
+1. Signature is valid
+2. Payment amount matches
+3. Payment destination matches
+4. Network matches (devnet vs mainnet)
+
+### "RPC error"
+
+Provide custom RPC URL:
+```python
+X402_CONFIG = {
+    'rpc_url': 'https://api.mainnet-beta.solana.com',
+}
+```
+
+## Getting Help
+
+- 📖 [API Reference](API.md)
+- 💬 [GitHub Discussions](https://github.com/yourusername/x402-connector/discussions)
+- 🐛 [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
+- 💼 [Examples](examples/)
 
 ---
 
-**Quick Links:**
-- [Project Summary](PROJECT_SUMMARY.md)
-- [Architecture](ARCHITECTURE.md)
-- [Technical Spec](TECHNICAL.md)
-- [Implementation Plan](INTEGRATION.md)
-- [Contributing](CONTRIBUTING.md)
-
+Ready to build? Head to [API.md](API.md) for complete reference!

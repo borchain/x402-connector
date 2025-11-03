@@ -1,218 +1,131 @@
-"""Tests for core configuration classes."""
+"""Tests for Solana-specific configuration."""
 
 import os
 import pytest
-from x402_connector.core.config import (
-    X402Config,
-    LocalFacilitatorConfig,
-    RemoteFacilitatorConfig,
-)
-
-
-class TestLocalFacilitatorConfig:
-    """Tests for LocalFacilitatorConfig."""
-    
-    def test_default_values(self):
-        """Test default configuration values."""
-        config = LocalFacilitatorConfig()
-        
-        assert config.private_key_env == 'X402_SIGNER_KEY'
-        assert config.rpc_url_env == 'X402_RPC_URL'
-        assert config.verify_balance is False
-        assert config.simulate_before_send is True
-        assert config.wait_for_receipt is False
-    
-    def test_custom_values(self):
-        """Test custom configuration values."""
-        config = LocalFacilitatorConfig(
-            private_key_env='MY_KEY',
-            rpc_url_env='MY_RPC',
-            verify_balance=True,
-            simulate_before_send=False,
-            wait_for_receipt=True
-        )
-        
-        assert config.private_key_env == 'MY_KEY'
-        assert config.rpc_url_env == 'MY_RPC'
-        assert config.verify_balance is True
-        assert config.simulate_before_send is False
-        assert config.wait_for_receipt is True
-
-
-class TestRemoteFacilitatorConfig:
-    """Tests for RemoteFacilitatorConfig."""
-    
-    def test_required_url(self):
-        """Test that URL is required."""
-        config = RemoteFacilitatorConfig(url='https://facilitator.example.com')
-        assert config.url == 'https://facilitator.example.com'
-    
-    def test_optional_headers(self):
-        """Test optional headers."""
-        config = RemoteFacilitatorConfig(
-            url='https://facilitator.example.com',
-            headers={'Authorization': 'Bearer token'}
-        )
-        assert config.headers == {'Authorization': 'Bearer token'}
-    
-    def test_custom_timeout(self):
-        """Test custom timeout."""
-        config = RemoteFacilitatorConfig(
-            url='https://facilitator.example.com',
-            timeout=30
-        )
-        assert config.timeout == 30
+from x402_connector.core.config import X402Config
 
 
 class TestX402Config:
-    """Tests for main X402Config class."""
+    """Tests for X402Config (Solana-only)."""
     
     def test_minimal_config(self):
         """Test minimal valid configuration."""
         config = X402Config(
-            network='base',
-            price='$0.01',
-            pay_to_address='0x1234567890123456789012345678901234567890'
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'
         )
         
-        assert config.network == 'base'
+        assert config.pay_to_address == 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'
         assert config.price == '$0.01'
-        assert config.pay_to_address == '0x1234567890123456789012345678901234567890'
+        assert config.network == 'solana-mainnet'
         assert config.protected_paths == ['*']
-        assert config.facilitator_mode == 'local'
     
-    def test_missing_required_fields_raises_error(self):
-        """Test that missing required fields raise ValueError."""
-        with pytest.raises(ValueError, match='network is required'):
-            X402Config(network='', price='$0.01', pay_to_address='0x123')
-        
-        with pytest.raises(ValueError, match='price is required'):
-            X402Config(network='base', price='', pay_to_address='0x123')
-        
-        with pytest.raises(ValueError, match='pay_to_address is required'):
-            X402Config(network='base', price='$0.01', pay_to_address='')
+    def test_custom_price(self):
+        """Test custom price configuration."""
+        config = X402Config(
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            price='$0.10'
+        )
+        assert config.price == '$0.10'
     
-    def test_invalid_facilitator_mode_raises_error(self):
-        """Test that invalid facilitator mode raises ValueError."""
-        with pytest.raises(ValueError, match='facilitator_mode must be'):
+    def test_custom_network(self):
+        """Test custom network configuration."""
+        config = X402Config(
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            network='solana-devnet'
+        )
+        assert config.network == 'solana-devnet'
+    
+    def test_invalid_network_raises_error(self):
+        """Test that invalid network raises ValueError."""
+        with pytest.raises(ValueError, match='network must be one of'):
             X402Config(
-                network='base',
-                price='$0.01',
-                pay_to_address='0x123',
-                facilitator_mode='invalid'
+                pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+                network='ethereum'  # Invalid - not Solana
             )
     
-    def test_custom_protected_paths(self):
-        """Test custom protected paths."""
+    def test_missing_pay_to_address_raises_error(self):
+        """Test that missing pay_to_address raises ValueError."""
+        with pytest.raises(ValueError, match='pay_to_address is required'):
+            X402Config(pay_to_address='')
+    
+    def test_protected_paths(self):
+        """Test protected paths configuration."""
         config = X402Config(
-            network='base',
-            price='$0.01',
-            pay_to_address='0x123',
-            protected_paths=['/api/premium/*', '/api/paid/*']
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            protected_paths=['/api/premium/*']
+        )
+        assert config.protected_paths == ['/api/premium/*']
+    
+    def test_custom_rpc_url(self):
+        """Test custom RPC URL."""
+        config = X402Config(
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            rpc_url='https://api.devnet.solana.com'
+        )
+        assert config.rpc_url == 'https://api.devnet.solana.com'
+    
+    def test_local_config_auto_created(self):
+        """Test that local facilitator config is auto-created."""
+        config = X402Config(
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            network='solana-devnet'
         )
         
-        assert config.protected_paths == ['/api/premium/*', '/api/paid/*']
+        assert config.local is not None
+        assert config.local['private_key_env'] == 'X402_SIGNER_KEY'
+        assert config.local['rpc_url'] == 'https://api.devnet.solana.com'
     
     def test_from_dict(self):
         """Test creating config from dictionary."""
-        config = X402Config.from_dict({
-            'network': 'base',
-            'price': '$0.01',
-            'pay_to_address': '0x123',
-            'protected_paths': ['/api/*'],
-            'facilitator_mode': 'local',
-            'local': {
-                'verify_balance': True,
-                'simulate_before_send': False,
-            }
-        })
+        config_dict = {
+            'pay_to_address': 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            'price': '$0.05',
+            'network': 'solana-devnet',
+        }
         
-        assert config.network == 'base'
-        assert config.protected_paths == ['/api/*']
-        assert config.local is not None
-        assert config.local.verify_balance is True
-        assert config.local.simulate_before_send is False
+        config = X402Config.from_dict(config_dict)
+        
+        assert config.pay_to_address == 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'
+        assert config.price == '$0.05'
+        assert config.network == 'solana-devnet'
     
-    def test_from_env(self, monkeypatch):
+    def test_from_env(self):
         """Test creating config from environment variables."""
-        monkeypatch.setenv('X402_NETWORK', 'base')
-        monkeypatch.setenv('X402_PRICE', '$0.01')
-        monkeypatch.setenv('X402_PAY_TO_ADDRESS', '0x123')
-        monkeypatch.setenv('X402_PROTECTED_PATHS', '/api/premium/*,/api/paid/*')
+        os.environ['X402_PAY_TO_ADDRESS'] = 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'
+        os.environ['X402_PRICE'] = '$0.02'
+        os.environ['X402_NETWORK'] = 'solana-testnet'
         
-        config = X402Config.from_env()
-        
-        assert config.network == 'base'
-        assert config.price == '$0.01'
-        assert config.pay_to_address == '0x123'
-        assert config.protected_paths == ['/api/premium/*', '/api/paid/*']
+        try:
+            config = X402Config.from_env()
+            
+            assert config.pay_to_address == 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'
+            assert config.price == '$0.02'
+            assert config.network == 'solana-testnet'
+        finally:
+            del os.environ['X402_PAY_TO_ADDRESS']
+            del os.environ['X402_PRICE']
+            del os.environ['X402_NETWORK']
     
     def test_from_env_missing_required_raises_error(self):
-        """Test that from_env raises error when required vars missing."""
-        with pytest.raises(ValueError, match='Missing required environment variables'):
+        """Test that missing required env vars raise ValueError."""
+        # Make sure PAY_TO_ADDRESS is not set
+        os.environ.pop('X402_PAY_TO_ADDRESS', None)
+        
+        with pytest.raises(ValueError, match='Missing required environment variable'):
             X402Config.from_env()
     
-    def test_local_mode_creates_default_local_config(self):
-        """Test that local mode creates default local config."""
+    def test_verify_balance_option(self):
+        """Test verify_balance configuration."""
         config = X402Config(
-            network='base',
-            price='$0.01',
-            pay_to_address='0x123',
-            facilitator_mode='local'
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            verify_balance=True
         )
-        
-        assert config.local is not None
-        assert isinstance(config.local, LocalFacilitatorConfig)
+        assert config.verify_balance is True
     
-    def test_remote_mode_requires_remote_config(self):
-        """Test that remote mode requires remote config."""
-        with pytest.raises(ValueError, match='remote facilitator config required'):
-            X402Config(
-                network='base',
-                price='$0.01',
-                pay_to_address='0x123',
-                facilitator_mode='remote'
-            )
-    
-    def test_remote_mode_with_config(self):
-        """Test remote mode with proper config."""
+    def test_wait_for_confirmation_option(self):
+        """Test wait_for_confirmation configuration."""
         config = X402Config(
-            network='base',
-            price='$0.01',
-            pay_to_address='0x123',
-            facilitator_mode='remote',
-            remote=RemoteFacilitatorConfig(url='https://facilitator.example.com')
+            pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+            wait_for_confirmation=True
         )
-        
-        assert config.facilitator_mode == 'remote'
-        assert config.remote is not None
-        assert config.remote.url == 'https://facilitator.example.com'
-    
-    def test_settle_policy_validation(self):
-        """Test settle policy validation."""
-        # Valid values should work
-        config = X402Config(
-            network='base',
-            price='$0.01',
-            pay_to_address='0x123',
-            settle_policy='block-on-failure'
-        )
-        assert config.settle_policy == 'block-on-failure'
-        
-        config = X402Config(
-            network='base',
-            price='$0.01',
-            pay_to_address='0x123',
-            settle_policy='log-and-continue'
-        )
-        assert config.settle_policy == 'log-and-continue'
-        
-        # Invalid value should raise error
-        with pytest.raises(ValueError, match='settle_policy must be'):
-            X402Config(
-                network='base',
-                price='$0.01',
-                pay_to_address='0x123',
-                settle_policy='invalid'
-            )
-
+        assert config.wait_for_confirmation is True

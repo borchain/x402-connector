@@ -2,38 +2,36 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)
 
-**Universal Python SDK for the x402 "Payment Required" protocol.**
+**Python SDK for HTTP 402 Payment Required on Solana**
 
-A framework-agnostic SDK that brings HTTP 402 payments to Python web applications with seamless integration across Django, Flask, FastAPI, and more.
+A lightweight, framework-agnostic SDK that adds micropayments to Python web applications using the x402 protocol on Solana blockchain.
 
-## 🚀 Features
+## Why Solana?
 
-- **Framework Agnostic**: One core library, multiple framework adapters
-- **Simple Integration**: Single decorator or middleware to protect endpoints
-- **Flexible Configuration**: Environment variables, dicts, or config objects
-- **Multiple Facilitator Modes**: Local, remote, or hybrid settlement
-- **Type Safe**: Full typing support for better developer experience
-- **Production Ready**: Comprehensive test coverage and battle-tested patterns
+- ⚡ **400ms finality** - Near-instant payment confirmation
+- 💰 **$0.00001/tx** - Lowest transaction costs
+- 🔒 **Native USDC** - Real stablecoins, not wrapped tokens
+- 🚀 **High throughput** - 65,000 TPS capability
 
-## 📦 Installation
+## Features
+
+- 🎯 **Simple Integration** - Add `@require_payment` decorator to any endpoint
+- 🌐 **Framework Agnostic** - Works with Django, Flask, FastAPI, and more
+- ⚙️ **Zero Configuration** - Sensible defaults, configure only what you need
+- 🔧 **Production Ready** - 100+ tests, comprehensive error handling
+- 📖 **Well Documented** - Clear examples and API reference
+
+## Quick Start
+
+### Installation
 
 ```bash
-# Core library
 pip install x402-connector
-
-# With framework-specific extras
-pip install x402-connector[django]
-pip install x402-connector[flask]
-pip install x402-connector[fastapi]
-
-# Install all frameworks
-pip install x402-connector[all]
 ```
 
-## 🎯 Quick Start
-
-### Django
+### Django Example
 
 ```python
 # settings.py
@@ -42,185 +40,164 @@ MIDDLEWARE = [
 ]
 
 X402_CONFIG = {
-    'protected_paths': ['/api/premium/*'],
-    'network': 'base',
     'price': '$0.01',
-    'pay_to_address': '0xYourAddress',
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
 }
+
+# views.py
+from x402_connector.django import require_payment
+
+def free_endpoint(request):
+    return JsonResponse({'data': 'free'})
+
+@require_payment(price='$0.01')
+def premium_endpoint(request):
+    return JsonResponse({'data': 'premium'})
 ```
 
-### Flask
+That's it! The `premium_endpoint` now requires payment.
+
+### Flask Example
 
 ```python
-from flask import Flask
-from x402_connector.flask import X402Flask
+from flask import Flask, jsonify
+from x402_connector.flask import X402, require_payment
 
 app = Flask(__name__)
-x402 = X402Flask(app, {
-    'network': 'base',
-    'price': '$0.01',
-    'pay_to_address': '0xYourAddress',
-})
+x402 = X402(app, pay_to_address='YOUR_SOLANA_ADDRESS')
 
-@app.route('/api/premium')
-@x402.require_payment()
+@app.route('/free')
+def free_endpoint():
+    return jsonify({'data': 'free'})
+
+@app.route('/premium')
+@require_payment(price='$0.01')
 def premium_endpoint():
-    return {'data': 'premium content'}
+    return jsonify({'data': 'premium'})
 ```
 
-### FastAPI
+### FastAPI Example
 
 ```python
 from fastapi import FastAPI
-from x402_connector.fastapi import X402Middleware
+from x402_connector.fastapi import X402Middleware, require_payment
 
 app = FastAPI()
-app.add_middleware(X402Middleware, config={
-    'protected_paths': ['/api/premium'],
-    'network': 'base',
-    'price': '$0.01',
-    'pay_to_address': '0xYourAddress',
-})
+app.add_middleware(X402Middleware, pay_to_address='YOUR_SOLANA_ADDRESS')
 
-@app.get('/api/premium')
+@app.get('/free')
+async def free_endpoint():
+    return {'data': 'free'}
+
+@app.get('/premium')
+@require_payment(price='$0.01')
 async def premium_endpoint():
-    return {'data': 'premium content'}
+    return {'data': 'premium'}
 ```
 
-## 🏗️ Architecture
+## How It Works
 
-The SDK follows a layered architecture:
+1. **User requests protected endpoint** → `GET /premium`
+2. **Server returns 402** with Solana payment instructions
+3. **User signs payment** with wallet (Phantom, Solflare, etc.)
+4. **User retries with payment** → `GET /premium` + `X-PAYMENT` header
+5. **Server verifies & settles** → Returns 200 with content
 
 ```
-Framework Adapters (Django, Flask, FastAPI, etc.)
-    ↓
-Core x402 Logic (Framework-agnostic)
-    ↓
-Facilitators (Local, Remote, Hybrid)
-    ↓
-Blockchain Settlement Layer
+GET /premium
+←
+402 Payment Required
+{
+  "accepts": [{
+    "network": "solana-devnet",
+    "asset": "USDC",
+    "amount": "10000",
+    "payTo": "YOUR_ADDRESS"
+  }]
+}
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design documentation.
+## Configuration
 
-## 📚 Documentation
+```python
+X402_CONFIG = {
+    # Required
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',  # Where you receive payments
+    
+    # Optional (sensible defaults)
+    'price': '$0.01',                          # Default price
+    'network': 'solana-mainnet',               # Network (mainnet/devnet/testnet)
+    'rpc_url': None,                           # Custom RPC (uses public by default)
+    'signer_key_env': 'X402_SIGNER_KEY',      # Env var for settlement key
+}
+```
 
-- [Architecture Overview](ARCHITECTURE.md) - System design and patterns
-- [Technical Specification](TECHNICAL.md) - Implementation details
-- [Integration Guide](INTEGRATION.md) - Step-by-step implementation plan
-
-## 📚 Examples
-
-Complete, working examples for each framework:
-
-### Django Example (✅ COMPLETE)
+## Environment Variables
 
 ```bash
-cd examples/django
-./quickstart.sh
-python manage.py runserver
+# Required for settlement
+X402_SIGNER_KEY=your_private_key_base58     # Server wallet for gas fees
+
+# Optional overrides
+X402_PAY_TO_ADDRESS=your_solana_address     # Payment recipient
+X402_NETWORK=solana-devnet                  # Network override
+X402_RPC_URL=https://api.mainnet-beta.solana.com  # Custom RPC
 ```
 
-Visit `http://localhost:8000` to see it in action!
-
-See [Django Example README](examples/django/README.md) for detailed documentation.
-
-### Flask Example (🚧 Coming Soon)
-
-```bash
-cd examples/flask_basic
-./quickstart.sh
-flask run
-```
-
-### FastAPI Example (🚧 Coming Soon)
-
-```bash
-cd examples/fastapi_basic
-./quickstart.sh
-uvicorn main:app
-```
-
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
 pytest
 
+# Run with coverage
+pytest --cov=x402_connector
+
 # Test specific framework
-pytest tests/test_django.py
-pytest tests/test_flask.py
-pytest tests/test_fastapi.py
-
-# Test core logic only
-pytest tests/test_core.py
+pytest tests/test_django_adapter.py
 ```
 
-## 🔧 Configuration
+## Examples
 
-All configuration options with descriptions:
+See the `examples/` directory for complete working examples:
 
-```python
-config = {
-    # Required
-    'network': 'base',              # Blockchain network
-    'price': '$0.01',               # Price per request
-    'pay_to_address': '0x...',      # Payment recipient
-    
-    # Optional
-    'protected_paths': ['*'],       # Paths to protect (glob patterns)
-    'facilitator_mode': 'local',    # 'local' | 'remote' | 'hybrid'
-    'description': 'API access',    # Payment description
-    'mime_type': 'application/json', # Response content type
-    'max_timeout_seconds': 60,      # Payment validity window
-    
-    # Local facilitator options
-    'local': {
-        'private_key_env': 'X402_SIGNER_KEY',
-        'rpc_url_env': 'X402_RPC_URL',
-        'verify_balance': True,
-        'simulate_before_send': True,
-    },
-    
-    # Remote facilitator options
-    'remote': {
-        'url': 'https://facilitator.example.com',
-        'headers': {'Authorization': 'Bearer token'},
-    },
-}
-```
+- [Django Example](examples/django/) - Full Django integration with frontend demo
+- Flask Example - Coming soon
+- FastAPI Example - Coming soon
 
-## 🌐 Supported Frameworks
+## Documentation
 
-| Framework | Status | Version |
-|-----------|--------|---------|
-| Django    | ✅ Supported | 5.0+ |
-| Flask     | ✅ Supported | 3.0+ |
-| FastAPI   | ✅ Supported | 0.100+ |
-| Pyramid   | 🚧 Planned | - |
-| Bottle    | 🚧 Planned | - |
-| Tornado   | 🚧 Planned | - |
-| Sanic     | 🚧 Planned | - |
+- [Quick Start Guide](QUICKSTART.md) - Get started in 5 minutes
+- [API Reference](API.md) - Complete API documentation
+- [Examples](examples/) - Working code examples
 
-## 🤝 Contributing
+## Security Notes
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- **Never commit private keys** - Use environment variables
+- **Separate wallets** - Use different addresses for `pay_to_address` (cold) and `signer_key` (hot)
+- **Mainnet readiness** - Test thoroughly on devnet before production
+- **Rate limiting** - Implement rate limiting to prevent abuse
 
-## 📄 License
+## Requirements
 
-MIT License - see [LICENSE](LICENSE) for details.
+- Python 3.10+
+- Solana wallet
+- USDC for payments (or devnet SOL for testing)
 
-## 🔗 Links
+## License
 
-- [x402 Protocol Specification](https://github.com/coinbase/x402)
-- [Solana x402 Overview](https://solana.com/x402/what-is-x402)
-- [Coinbase x402 Documentation](https://www.coinbase.com/developer-platform/products/x402)
+MIT License - see [LICENSE](LICENSE) for details
 
-## 💡 Examples
+## Links
 
-See the [examples/](examples/) directory for complete integration examples:
+- [x402 Protocol](https://github.com/coinbase/x402)
+- [Solana Documentation](https://docs.solana.com)
+- [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
 
-- [Django Example](examples/django_example/)
-- [Flask Example](examples/flask_example/)
-- [FastAPI Example](examples/fastapi_example/)
+## Contributing
 
+Contributions welcome! Please open an issue or PR.
+
+---
+
+Built with ❤️ for the Solana ecosystem

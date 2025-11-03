@@ -93,6 +93,11 @@ class X402Middleware:
             self.processor = X402PaymentProcessor(self.config)
             self.adapter = DjangoAdapter()
             self.enabled = True
+            
+            # Set global processor for decorators
+            from .decorators import set_processor
+            set_processor(self.processor)
+            
             logger.info(
                 f"x402 middleware initialized: "
                 f"protecting paths {self.config.protected_paths}"

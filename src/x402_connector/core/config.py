@@ -1,4 +1,4 @@
-"""Configuration management for x402 payment processing."""
+"""Configuration management for x402 payment processing on Solana."""
 
 import os
 from dataclasses import dataclass, field
@@ -6,138 +6,96 @@ from typing import Optional, List, Dict, Any
 
 
 @dataclass
-class LocalFacilitatorConfig:
-    """Configuration for local (self-hosted) payment facilitator.
-    
-    When using local mode, your application verifies signatures and broadcasts
-    transactions directly to the blockchain.
-    
-    Attributes:
-        private_key_env: Name of environment variable containing private key
-        rpc_url_env: Name of environment variable containing RPC URL
-        verify_balance: Whether to check payer has sufficient ERC-20 balance
-        simulate_before_send: Whether to simulate transaction before broadcasting
-        wait_for_receipt: Whether to wait for transaction confirmation
-    """
-    
-    private_key_env: str = 'X402_SIGNER_KEY'
-    rpc_url_env: str = 'X402_RPC_URL'
-    verify_balance: bool = False
-    simulate_before_send: bool = True
-    wait_for_receipt: bool = False
-
-
-@dataclass
-class RemoteFacilitatorConfig:
-    """Configuration for remote payment facilitator service.
-    
-    When using remote mode, payment verification and settlement are handled
-    by an external service (e.g., Coinbase's facilitator).
-    
-    Attributes:
-        url: Base URL of the facilitator service
-        headers: Optional HTTP headers to include in requests
-        timeout: Request timeout in seconds
-    """
-    
-    url: str
-    headers: Optional[Dict[str, str]] = None
-    timeout: int = 20
-
-
-@dataclass
 class X402Config:
-    """Main configuration for x402 payment processing.
+    """Configuration for x402 payment processing on Solana.
     
-    This configuration is framework-agnostic and can be loaded from
-    dictionaries, environment variables, or framework-specific config objects.
+    Required:
+        pay_to_address: Solana address where payments are received (base58 format)
     
-    Required attributes:
-        network: Blockchain network (e.g., 'base', 'base-sepolia', 'polygon')
-        price: Price per request (e.g., '$0.01', '1000000' for atomic units)
-        pay_to_address: Ethereum address to receive payments
+    Optional:
+        price: Default price per request. Default: '$0.01'
+        network: Solana network. Default: 'solana-mainnet'
+                 Options: 'solana-mainnet', 'solana-devnet', 'solana-testnet'
+        protected_paths: URL paths requiring payment. Default: ['*'] (all paths)
+        description: Human-readable description. Default: 'API Access'
+        rpc_url: Custom RPC URL. Default: Uses public RPC based on network
+        signer_key_env: Environment variable for private key. Default: 'X402_SIGNER_KEY'
+        max_timeout_seconds: Payment validity window. Default: 60
+        verify_balance: Check sender has sufficient funds. Default: False
+        wait_for_confirmation: Wait for transaction confirmation. Default: False
     
-    Optional attributes:
-        protected_paths: List of glob patterns for paths requiring payment
-        facilitator_mode: 'local', 'remote', or 'hybrid'
-        description: Human-readable description of the paid resource
-        mime_type: Expected response content type
-        max_timeout_seconds: Maximum validity window for payments
-        discoverable: Whether to include in x402 discovery
-        
     Example:
         >>> config = X402Config(
-        ...     network='base',
+        ...     pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
         ...     price='$0.01',
-        ...     pay_to_address='0x1234...',
-        ...     protected_paths=['/api/premium/*'],
+        ...     network='solana-devnet',
         ... )
     """
     
     # Required
-    network: str
-    price: str
     pay_to_address: str
     
     # Optional with defaults
+    price: str = '$0.01'
+    network: str = 'solana-mainnet'
     protected_paths: List[str] = field(default_factory=lambda: ['*'])
-    facilitator_mode: str = 'local'
-    description: str = ''
-    mime_type: str = 'application/json'
+    description: str = 'API Access'
+    rpc_url: Optional[str] = None
+    signer_key_env: str = 'X402_SIGNER_KEY'
     max_timeout_seconds: int = 60
-    discoverable: bool = True
+    verify_balance: bool = False
+    wait_for_confirmation: bool = False
     
-    # Facilitator configs
-    local: Optional[LocalFacilitatorConfig] = None
-    remote: Optional[RemoteFacilitatorConfig] = None
-    
-    # Advanced options
-    settle_policy: str = 'block-on-failure'  # or 'log-and-continue'
-    replay_cache_enabled: bool = False
+    # Internal configs (for facilitator)
+    local: Optional[Dict[str, Any]] = None
+    facilitator_mode: str = 'local'  # Always local for Solana
     
     def __post_init__(self):
-        """Validate configuration after initialization."""
+        """Validate and set up configuration."""
         self._validate()
-        self._set_defaults()
+        self._setup_local_config()
     
     def _validate(self):
-        """Validate required fields and values."""
-        if not self.network:
-            raise ValueError("network is required")
-        if not self.price:
-            raise ValueError("price is required")
+        """Validate required fields."""
         if not self.pay_to_address:
             raise ValueError("pay_to_address is required")
         
-        if self.facilitator_mode not in ('local', 'remote', 'hybrid'):
+        if not self.price:
+            raise ValueError("price is required")
+        
+        # Validate network
+        valid_networks = ['solana-mainnet', 'solana-devnet', 'solana-testnet']
+        if self.network not in valid_networks:
             raise ValueError(
-                f"facilitator_mode must be 'local', 'remote', or 'hybrid', "
-                f"got '{self.facilitator_mode}'"
+                f"network must be one of {valid_networks}, got '{self.network}'"
             )
         
-        if self.settle_policy not in ('block-on-failure', 'log-and-continue'):
+        # Validate address format (basic check for base58)
+        if not self.pay_to_address or len(self.pay_to_address) < 32:
             raise ValueError(
-                f"settle_policy must be 'block-on-failure' or 'log-and-continue', "
-                f"got '{self.settle_policy}'"
+                "pay_to_address must be a valid Solana address (base58 format)"
             )
     
-    def _set_defaults(self):
-        """Set default facilitator configs if not provided."""
-        if self.facilitator_mode == 'local' and self.local is None:
-            self.local = LocalFacilitatorConfig()
-        
-        if self.facilitator_mode == 'remote' and self.remote is None:
-            raise ValueError(
-                "remote facilitator config required when facilitator_mode='remote'"
-            )
-        
-        if self.facilitator_mode == 'hybrid':
-            if self.local is None:
-                self.local = LocalFacilitatorConfig()
-            if self.remote is None:
-                raise ValueError(
-                    "remote facilitator config required when facilitator_mode='hybrid'"
-                )
+    def _setup_local_config(self):
+        """Setup local facilitator configuration."""
+        if self.local is None:
+            # Get RPC URL
+            rpc_url = self.rpc_url
+            if not rpc_url:
+                # Use default based on network
+                rpc_urls = {
+                    'solana-mainnet': 'https://api.mainnet-beta.solana.com',
+                    'solana-devnet': 'https://api.devnet.solana.com',
+                    'solana-testnet': 'https://api.testnet.solana.com',
+                }
+                rpc_url = rpc_urls.get(self.network, 'https://api.devnet.solana.com')
+            
+            self.local = {
+                'private_key_env': self.signer_key_env,
+                'rpc_url': rpc_url,
+                'verify_balance': self.verify_balance,
+                'wait_for_confirmation': self.wait_for_confirmation,
+            }
     
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'X402Config':
@@ -151,54 +109,26 @@ class X402Config:
             
         Example:
             >>> config = X402Config.from_dict({
-            ...     'network': 'base',
+            ...     'pay_to_address': 'DYw8j...',
             ...     'price': '$0.01',
-            ...     'pay_to_address': '0x1234...',
-            ...     'local': {'verify_balance': True}
+            ...     'network': 'solana-devnet',
             ... })
         """
-        # Make a copy to avoid mutating input
-        data = config_dict.copy()
-        
-        # Extract nested configs
-        local_config = data.pop('local', None)
-        remote_config = data.pop('remote', None)
-        
-        # Create facilitator configs
-        local = None
-        if local_config is not None:
-            if isinstance(local_config, LocalFacilitatorConfig):
-                local = local_config
-            else:
-                local = LocalFacilitatorConfig(**local_config)
-        
-        remote = None
-        if remote_config is not None:
-            if isinstance(remote_config, RemoteFacilitatorConfig):
-                remote = remote_config
-            else:
-                remote = RemoteFacilitatorConfig(**remote_config)
-        
-        return cls(
-            local=local,
-            remote=remote,
-            **data
-        )
+        return cls(**config_dict)
     
     @classmethod
     def from_env(cls, prefix: str = 'X402_') -> 'X402Config':
         """Load configuration from environment variables.
         
-        Required environment variables:
-            {prefix}NETWORK - Blockchain network
-            {prefix}PRICE - Price per request
-            {prefix}PAY_TO_ADDRESS - Payment recipient address
+        Required:
+            {prefix}PAY_TO_ADDRESS - Solana address for payments
         
-        Optional environment variables:
-            {prefix}PROTECTED_PATHS - Comma-separated path patterns
-            {prefix}FACILITATOR_MODE - 'local', 'remote', or 'hybrid'
-            {prefix}DESCRIPTION - Resource description
-            And more...
+        Optional:
+            {prefix}PRICE - Price per request (default: '$0.01')
+            {prefix}NETWORK - Solana network (default: 'solana-mainnet')
+            {prefix}RPC_URL - Custom RPC URL
+            {prefix}SIGNER_KEY - Private key (used at runtime, not for config)
+            {prefix}PROTECTED_PATHS - Comma-separated paths
         
         Args:
             prefix: Prefix for environment variable names
@@ -206,30 +136,14 @@ class X402Config:
         Returns:
             X402Config instance
             
-        Raises:
-            ValueError: If required environment variables are missing
-            
         Example:
-            >>> os.environ['X402_NETWORK'] = 'base'
-            >>> os.environ['X402_PRICE'] = '$0.01'
-            >>> os.environ['X402_PAY_TO_ADDRESS'] = '0x1234...'
+            >>> os.environ['X402_PAY_TO_ADDRESS'] = 'DYw8j...'
             >>> config = X402Config.from_env()
         """
-        network = os.getenv(f'{prefix}NETWORK')
-        price = os.getenv(f'{prefix}PRICE')
         pay_to = os.getenv(f'{prefix}PAY_TO_ADDRESS')
-        
-        if not all([network, price, pay_to]):
-            missing = []
-            if not network:
-                missing.append(f'{prefix}NETWORK')
-            if not price:
-                missing.append(f'{prefix}PRICE')
-            if not pay_to:
-                missing.append(f'{prefix}PAY_TO_ADDRESS')
-            
+        if not pay_to:
             raise ValueError(
-                f"Missing required environment variables: {', '.join(missing)}"
+                f"Missing required environment variable: {prefix}PAY_TO_ADDRESS"
             )
         
         # Parse protected paths
@@ -237,18 +151,16 @@ class X402Config:
         protected_paths = [p.strip() for p in paths_str.split(',')]
         
         return cls(
-            network=network,
-            price=price,
             pay_to_address=pay_to,
+            price=os.getenv(f'{prefix}PRICE', '$0.01'),
+            network=os.getenv(f'{prefix}NETWORK', 'solana-mainnet'),
             protected_paths=protected_paths,
-            facilitator_mode=os.getenv(f'{prefix}FACILITATOR_MODE', 'local'),
-            description=os.getenv(f'{prefix}DESCRIPTION', ''),
-            mime_type=os.getenv(f'{prefix}MIME_TYPE', 'application/json'),
+            description=os.getenv(f'{prefix}DESCRIPTION', 'API Access'),
+            rpc_url=os.getenv(f'{prefix}RPC_URL'),
+            signer_key_env=f'{prefix}SIGNER_KEY',
             max_timeout_seconds=int(os.getenv(f'{prefix}MAX_TIMEOUT_SECONDS', '60')),
-            discoverable=os.getenv(f'{prefix}DISCOVERABLE', 'true').lower() == 'true',
-            settle_policy=os.getenv(f'{prefix}SETTLE_POLICY', 'block-on-failure'),
-            replay_cache_enabled=os.getenv(
-                f'{prefix}REPLAY_CACHE_ENABLED', 'false'
+            verify_balance=os.getenv(f'{prefix}VERIFY_BALANCE', 'false').lower() == 'true',
+            wait_for_confirmation=os.getenv(
+                f'{prefix}WAIT_FOR_CONFIRMATION', 'false'
             ).lower() == 'true',
         )
-

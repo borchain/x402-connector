@@ -1,4 +1,4 @@
-"""x402-connector: Universal Python SDK for the x402 Payment Required protocol.
+"""x402-connector: Python SDK for x402 Payment Required protocol on Solana.
 
 This package provides framework-agnostic payment processing with adapters for
 Django, Flask, FastAPI, and other Python web frameworks.
@@ -6,16 +6,20 @@ Django, Flask, FastAPI, and other Python web frameworks.
 Basic usage:
 
     # Django
-    from x402_connector.django import X402Middleware
+    from x402_connector.django import X402Middleware, require_payment
+    
+    @require_payment(price='$0.01')
+    def premium_endpoint(request):
+        return JsonResponse({'data': 'premium'})
 
-    # Flask
+    # Flask (coming soon)
     from x402_connector.flask import X402Flask
     app = Flask(__name__)
-    x402 = X402Flask(app, config={...})
+    x402 = X402Flask(app, pay_to_address='YOUR_SOLANA_ADDRESS')
 
-    # FastAPI
+    # FastAPI (coming soon)
     from x402_connector.fastapi import X402Middleware
-    app.add_middleware(X402Middleware, config={...})
+    app.add_middleware(X402Middleware, pay_to_address='YOUR_SOLANA_ADDRESS')
 
 For more information, see: https://github.com/borchain/x402-connector
 """
@@ -25,11 +29,7 @@ __author__ = "x402 Contributors"
 __license__ = "MIT"
 
 # Core exports
-from .core.config import (
-    X402Config,
-    LocalFacilitatorConfig,
-    RemoteFacilitatorConfig,
-)
+from .core.config import X402Config
 from .core.context import (
     RequestContext,
     ProcessingResult,
@@ -42,8 +42,6 @@ __all__ = [
     "__version__",
     # Config
     "X402Config",
-    "LocalFacilitatorConfig", 
-    "RemoteFacilitatorConfig",
     # Context
     "RequestContext",
     "ProcessingResult",

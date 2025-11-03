@@ -1,8 +1,7 @@
-"""
-Django settings for x402-connector example project.
+"""Django settings for x402-connector example project.
 
 This demonstrates how to integrate x402 payment requirements
-into a Django application.
+into a Django application using Solana blockchain.
 """
 
 import os
@@ -114,97 +113,43 @@ LOGGING = {
 }
 
 # ========================================================================
-# x402 Configuration - Payment Required Protocol
+# x402 Configuration - Solana Payment Required
 # ========================================================================
 
 X402_CONFIG = {
-    # ===== Required Settings =====
-    
-    # Blockchain network to use
-    # Options: 'base', 'base-sepolia', 'polygon', 'ethereum'
-    'network': os.getenv('X402_NETWORK', 'base-sepolia'),
-    
-    # Price per request
-    # Formats: '$0.01', '10000' (atomic units), '0.01 USDC'
-    'price': os.getenv('X402_PRICE', '$0.01'),
-    
-    # Your payment recipient address (Ethereum address)
+    # Required: Your Solana address for receiving payments
     'pay_to_address': os.getenv(
         'X402_PAY_TO_ADDRESS',
-        '0x0000000000000000000000000000000000000000'  # Change this!
+        'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'  # Example address
     ),
     
-    # ===== Protected Paths =====
+    # Optional: Price per request (default: '$0.01')
+    'price': os.getenv('X402_PRICE', '$0.01'),
     
-    # Which URL paths require payment
-    # Supports glob patterns: '*', '/api/premium/*', etc.
-    'protected_paths': [
-        '/api/random/premium',  # Premium random number (demo)
-        '/api/premium/*',       # All premium API endpoints
-        '/api/paid/*',          # All paid API endpoints
-    ],
+    # Optional: Solana network (default: 'solana-mainnet')
+    # Options: 'solana-mainnet', 'solana-devnet', 'solana-testnet'
+    'network': os.getenv('X402_NETWORK', 'solana-devnet'),
     
-    # ===== Optional Settings =====
+    # Optional: Custom RPC URL (uses public RPC if not specified)
+    # 'rpc_url': 'https://api.devnet.solana.com',
     
-    # Human-readable description
-    'description': 'Premium API Access - x402 Example',
-    
-    # Expected response content type
-    'mime_type': 'application/json',
-    
-    # Maximum time for payment validity (seconds)
-    'max_timeout_seconds': 60,
-    
-    # Whether to include in x402 discovery
-    'discoverable': True,
-    
-    # ===== Facilitator Configuration =====
-    
-    # Facilitator mode: 'local', 'remote', or 'hybrid'
-    # - local: Verify and settle payments yourself
-    # - remote: Use external facilitator service
-    # - hybrid: Verify locally, settle remotely
-    'facilitator_mode': os.getenv('X402_FACILITATOR_MODE', 'local'),
-    
-    # Local facilitator settings (when mode='local' or 'hybrid')
-    'local': {
-        # Environment variable name for private key
-        'private_key_env': 'X402_SIGNER_KEY',
-        
-        # Environment variable name for RPC URL
-        'rpc_url_env': 'X402_RPC_URL',
-        
-        # Whether to verify payer has sufficient balance
-        'verify_balance': False,  # Set to True for production
-        
-        # Whether to simulate transaction before broadcasting
-        'simulate_before_send': True,
-        
-        # Whether to wait for transaction confirmation
-        'wait_for_receipt': False,  # Set to True for production
-    },
-    
-    # Remote facilitator settings (when mode='remote' or 'hybrid')
-    # 'remote': {
-    #     'url': 'https://facilitator.example.com',
-    #     'headers': {'Authorization': 'Bearer your-token'},
-    #     'timeout': 20,
-    # },
-    
-    # ===== Settlement Policy =====
-    
-    # What to do if payment settlement fails:
-    # - 'block-on-failure': Return 402 error
-    # - 'log-and-continue': Log error but continue
-    'settle_policy': 'block-on-failure',
-    
-    # Enable caching to prevent duplicate settlements
-    'replay_cache_enabled': True,
+    # Optional: Description
+    'description': 'Premium Random Number API',
 }
 
-# Validate required configuration
-if X402_CONFIG['pay_to_address'] == '0x0000000000000000000000000000000000000000':
-    print("⚠️  WARNING: X402_PAY_TO_ADDRESS is not configured!")
-    print("   Set the X402_PAY_TO_ADDRESS environment variable")
-    print("   or update config/settings.py")
+# Display current configuration
+print("=" * 70)
+print("x402-connector - Solana Payment SDK")
+print("=" * 70)
+print(f"Network:        {X402_CONFIG.get('network')}")
+print(f"Pay To:         {X402_CONFIG.get('pay_to_address')}")
+print(f"Default Price:  {X402_CONFIG.get('price')}")
+print("=" * 70)
 
+# Validate configuration
+pay_to = X402_CONFIG.get('pay_to_address', '')
+if not pay_to or len(pay_to) < 32:
+    print("⚠️  WARNING: X402_PAY_TO_ADDRESS is not properly configured!")
+    print("   Set a valid Solana address (base58 format)")
+    print("   Example: DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK")
+    print("=" * 70)

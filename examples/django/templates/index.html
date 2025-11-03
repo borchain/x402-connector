@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>x402-connector Django Demo</title>
+    <title>x402 Random Number Generator - Solana Demo</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -177,6 +177,7 @@
             color: #1e40af;
             line-height: 1.6;
             margin-bottom: 8px;
+            font-size: 0.9rem;
         }
         
         .info-box code {
@@ -185,12 +186,25 @@
             border-radius: 4px;
             font-family: 'Courier New', monospace;
         }
+
+        .solana-badge {
+            display: inline-block;
+            background: #14F195;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎲 x402 Random Number Generator</h1>
-        <p class="subtitle">Demonstrating HTTP 402 Payment Required</p>
+        <p class="subtitle">
+            Micropayments on Solana <span class="solana-badge">⚡ SOLANA</span>
+        </p>
         
         <!-- Free Random Number -->
         <div class="demo-section">
@@ -199,9 +213,9 @@
                 <span class="badge badge-free">FREE</span>
             </div>
             <p class="description">
-                Generate a random number between 1-6 (single digit). No payment required!
+                Generate a random number between 1-6. No payment required!
             </p>
-            <button onclick="getFreeNumber()" id="freeBtn">
+            <button onclick="getRandomNumber()" id="freeBtn">
                 🆓 Generate Free Number
             </button>
             <div class="result" id="freeResult"></div>
@@ -216,10 +230,10 @@
                 <span class="badge badge-paid">💰 $0.01 USDC</span>
             </div>
             <p class="description">
-                Generate a random number with 7+ digits (1000000-9999999). 
-                Requires payment via x402 protocol!
+                Generate a 7-digit random number (1000000-9999999). 
+                Requires $0.01 USDC payment on Solana!
             </p>
-            <button onclick="getPaidNumber()" id="paidBtn">
+            <button onclick="getPremiumNumber()" id="paidBtn">
                 💎 Generate Premium Number
             </button>
             <div class="result" id="paidResult"></div>
@@ -227,23 +241,25 @@
         
         <!-- Info Box -->
         <div class="info-box">
-            <h3>ℹ️ How it works</h3>
+            <h3>⚡ How it works</h3>
             <p>
-                <strong>Free:</strong> Normal HTTP request → 200 OK
+                <strong>Free:</strong> Normal HTTP request → <code>200 OK</code>
             </p>
             <p>
-                <strong>Paid:</strong> First request → <code>402 Payment Required</code><br>
-                With valid payment → 200 OK + premium number
+                <strong>Premium:</strong> First request → <code>402 Payment Required</code>
             </p>
-            <p style="margin-top: 10px; font-size: 0.9rem;">
-                This demo shows how x402-connector protects endpoints based on URL patterns.
-                The paid endpoint requires payment automatically - no code changes needed!
+            <p style="margin-top: 12px;">
+                The <code>@require_payment</code> decorator automatically handles
+                payment verification and settlement on Solana blockchain!
+            </p>
+            <p style="margin-top: 12px; font-size: 0.85rem; opacity: 0.8;">
+                ✨ Fast finality (400ms), low fees ($0.00001), native USDC
             </p>
         </div>
     </div>
     
     <script>
-        async function getFreeNumber() {
+        async function getRandomNumber() {
             const btn = document.getElementById('freeBtn');
             const result = document.getElementById('freeResult');
             
@@ -251,7 +267,7 @@
             btn.textContent = '🔄 Generating...';
             
             try {
-                const response = await fetch('/api/random/free');
+                const response = await fetch('/api/random');
                 const data = await response.json();
                 
                 if (response.ok) {
@@ -259,7 +275,7 @@
                         <div class="result-number">${data.number}</div>
                         <div class="result-info">
                             ✅ Free number generated!<br>
-                            Range: ${data.min}-${data.max}
+                            Range: ${data.range}
                         </div>
                     `;
                     result.classList.remove('error');
@@ -280,7 +296,7 @@
             btn.textContent = '🆓 Generate Free Number';
         }
         
-        async function getPaidNumber() {
+        async function getPremiumNumber() {
             const btn = document.getElementById('paidBtn');
             const result = document.getElementById('paidResult');
             
@@ -288,23 +304,21 @@
             btn.textContent = '🔄 Checking payment...';
             
             try {
-                const response = await fetch('/api/random/premium');
+                const response = await fetch('/api/premium/random');
                 
                 if (response.status === 402) {
                     // Payment required!
                     const data = await response.json();
+                    const accept = data.accepts[0] || {};
+                    
                     result.innerHTML = `
                         <div class="result-info">
                             🔒 <strong>Payment Required!</strong><br><br>
-                            This endpoint requires payment of <strong>$0.01 USDC</strong>.<br><br>
-                            In a real implementation, you would:<br>
-                            1. Sign an EIP-3009 payment authorization<br>
-                            2. Include it in the X-PAYMENT header<br>
-                            3. Retry the request<br><br>
-                            <strong>Status:</strong> ${response.status} ${response.statusText}<br>
-                            <strong>Network:</strong> ${data.accepts[0]?.network || 'base-sepolia'}<br>
-                            <strong>Asset:</strong> ${data.accepts[0]?.asset || 'USDC'}<br>
-                            <strong>Amount:</strong> ${data.accepts[0]?.maxAmountRequired || '10000'} (atomic units)
+                            This endpoint requires <strong>$0.01 USDC</strong> on Solana.<br><br>
+                            <strong>Network:</strong> ${accept.network || 'solana-devnet'}<br>
+                            <strong>Pay To:</strong> ${(accept.payTo || '').slice(0, 8)}...<br>
+                            <strong>Amount:</strong> ${accept.maxAmountRequired || '10000'} (atomic units)<br><br>
+                            <em>In a real app, your wallet would sign and send the payment!</em>
                         </div>
                     `;
                     result.classList.add('error');
@@ -314,8 +328,8 @@
                         <div class="result-number">${data.number}</div>
                         <div class="result-info">
                             ✅ Premium number generated!<br>
-                            Range: ${data.min}-${data.max}<br>
-                            💰 Payment settled on-chain
+                            Range: ${data.range}<br>
+                            💰 Payment settled on Solana
                         </div>
                     `;
                     result.classList.remove('error');
@@ -338,4 +352,3 @@
     </script>
 </body>
 </html>
-
