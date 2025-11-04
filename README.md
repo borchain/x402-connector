@@ -3,10 +3,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-69%20passing-brightgreen)
+![Django](https://img.shields.io/badge/Django-5.0%2B-092E20?logo=django)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)
+![Flask](https://img.shields.io/badge/Flask-3.0%2B-000000?logo=flask)
 
 **Python SDK for HTTP 402 Payment Required on Solana**
 
-A lightweight, framework-agnostic SDK that adds micropayments to Python web applications using the x402 protocol on Solana blockchain.
+A lightweight, framework-agnostic SDK that adds micropayments to Python web applications using the x402 protocol on Solana blockchain. Fully compatible with [Corbits.dev](https://corbits.dev/) facilitator.
 
 ## Why Solana?
 
@@ -20,8 +24,9 @@ A lightweight, framework-agnostic SDK that adds micropayments to Python web appl
 - 🎯 **Simple Integration** - Add `@require_payment` decorator to any endpoint
 - 🌐 **Framework Agnostic** - Works with Django, Flask, FastAPI, and more
 - ⚙️ **Zero Configuration** - Sensible defaults, configure only what you need
-- 🔧 **Production Ready** - 100+ tests, comprehensive error handling
+- 🔧 **Production Ready** - 35+ tests passing, comprehensive error handling
 - 📖 **Well Documented** - Clear examples and API reference
+- 🌍 **Corbits Compatible** - Works with https://corbits.dev/ facilitator
 
 ## Quick Start
 
@@ -40,7 +45,6 @@ MIDDLEWARE = [
 ]
 
 X402_CONFIG = {
-    'price': '$0.01',
     'pay_to_address': 'YOUR_SOLANA_ADDRESS',
 }
 
@@ -144,6 +148,30 @@ X402_NETWORK=solana-devnet                  # Network override
 X402_RPC_URL=https://api.mainnet-beta.solana.com  # Custom RPC
 ```
 
+## Corbits.dev Compatibility
+
+This SDK is fully compatible with the [Corbits.dev](https://corbits.dev/) facilitator service. You can use it in two modes:
+
+### Local Mode (Self-hosted)
+```python
+X402_CONFIG = {
+    'pay_to_address': 'YOUR_ADDRESS',
+    # Handles verification and settlement locally
+}
+```
+
+### Remote Mode (Using Corbits)
+```python
+X402_CONFIG = {
+    'pay_to_address': 'YOUR_ADDRESS',
+    'facilitator_mode': 'remote',
+    'remote': {
+        'url': 'https://corbits.dev/api',
+        'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
+    }
+}
+```
+
 ## Testing
 
 ```bash
@@ -161,7 +189,7 @@ pytest tests/test_django_adapter.py
 
 See the `examples/` directory for complete working examples:
 
-- [Django Example](examples/django/) - Full Django integration with frontend demo
+- [Django Example](examples/django/) - Full Django integration with Phantom wallet demo
 - Flask Example - Coming soon
 - FastAPI Example - Coming soon
 
@@ -184,6 +212,15 @@ See the `examples/` directory for complete working examples:
 - Solana wallet
 - USDC for payments (or devnet SOL for testing)
 
+## Framework Support
+
+| Framework | Version | Status |
+|-----------|---------|--------|
+| Django    | 5.0+    | ✅ Full Support |
+| Flask     | 3.0+    | 🚧 In Progress |
+| FastAPI   | 0.100+  | 🚧 In Progress |
+| Pyramid   | -       | 📋 Planned |
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details
@@ -192,6 +229,7 @@ MIT License - see [LICENSE](LICENSE) for details
 
 - [x402 Protocol](https://github.com/coinbase/x402)
 - [Solana Documentation](https://docs.solana.com)
+- [Corbits Facilitator](https://corbits.dev/)
 - [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
 
 ## Contributing

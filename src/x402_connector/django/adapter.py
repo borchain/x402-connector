@@ -47,51 +47,31 @@ class DjangoAdapter(BaseAdapter):
         requirements: List[Any],
         is_browser: bool
     ) -> HttpResponse:
-        """Create Django HTTP 402 Payment Required response.
+        """Create Django HTTP 402 Payment Required response (Solana-specific).
         
         Args:
             error: Error message explaining why payment is required
-            requirements: List of PaymentRequirements objects
+            requirements: List of payment requirement dicts
             is_browser: Whether the request appears to be from a web browser
             
         Returns:
             Django HttpResponse with status code 402
         """
-        try:
-            from x402.paywall import get_paywall_html
-            from x402.common import x402_VERSION
-            from x402.types import x402PaymentRequiredResponse
-        except ImportError:
-            # Fallback if x402 package not available
-            if is_browser:
-                html_content = self._get_fallback_paywall_html(error)
-                return HttpResponse(
-                    html_content,
-                    status=402,
-                    content_type='text/html; charset=utf-8'
-                )
-            else:
-                response_data = {
-                    'x402Version': 1,
-                    'accepts': [r.dict() if hasattr(r, 'dict') else r for r in requirements],
-                    'error': error,
-                }
-                return JsonResponse(response_data, status=402)
-        
         if is_browser:
-            html_content = get_paywall_html(error, requirements, None)
+            # Return HTML paywall for browsers
+            html_content = self._get_fallback_paywall_html(error)
             return HttpResponse(
                 html_content,
                 status=402,
                 content_type='text/html; charset=utf-8'
             )
         
-        response_data = x402PaymentRequiredResponse(
-            x402_version=x402_VERSION,
-            accepts=requirements,
-            error=error,
-        ).model_dump(by_alias=True)
-        
+        # Return JSON for API clients (Solana format)
+        response_data = {
+            'x402Version': 1,
+            'accepts': [r.dict() if hasattr(r, 'dict') else r for r in requirements],
+            'error': error,
+        }
         return JsonResponse(response_data, status=402)
     
     def add_payment_response_header(

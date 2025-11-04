@@ -8,11 +8,36 @@ import os
 from pathlib import Path
 
 # Load environment variables from .env file
+print("=" * 70)
+print("Loading .env file...")
+print("=" * 70)
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    env_path = Path(__file__).resolve().parent.parent / '.env'
+    
+    if env_path.exists():
+        print(f"✅ Found .env file at: {env_path}")
+        load_dotenv(env_path)
+        print("✅ .env file loaded successfully")
+        
+        # Check if X402_SIGNER_KEY is loaded
+        signer_key = os.getenv('X402_SIGNER_KEY', '')
+        if signer_key and len(signer_key) > 10:
+            print(f"🔑 X402_SIGNER_KEY: Loaded ({len(signer_key)} chars)")
+            print(f"   Preview: {signer_key[:20]}...{signer_key[-8:]}")
+            print("   Status: ✅ REAL MODE (transactions will be broadcast)")
+        else:
+            print("⚠️  X402_SIGNER_KEY: NOT SET")
+            print("   Status: ⚠️  DEMO MODE (signatures verified, no real transactions)")
+            print("   To enable: Set X402_SIGNER_KEY in .env file")
+    else:
+        print(f"⚠️  No .env file found at: {env_path}")
+        print("   Copy env.example to .env and configure your keys")
 except ImportError:
-    pass
+    print("⚠️  python-dotenv not installed")
+    print("   Install with: pip install python-dotenv")
+print("=" * 70)
+print()
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -120,21 +145,32 @@ X402_CONFIG = {
     # Required: Your Solana address for receiving payments
     'pay_to_address': os.getenv(
         'X402_PAY_TO_ADDRESS',
-        'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'  # Example address
+        'REPLACE_WITH_YOUR_SOLANA_ADDRESS_44_CHARS'  # Change this!
     ),
     
-    # Optional: Price per request (default: '$0.01')
+    # Optional: Default price (used if endpoint doesn't specify)
+    # Most endpoints use @require_payment(price='$0.01') instead
     'price': os.getenv('X402_PRICE', '$0.01'),
     
-    # Optional: Solana network (default: 'solana-mainnet')
-    # Options: 'solana-mainnet', 'solana-devnet', 'solana-testnet'
+    # Optional: Solana network
     'network': os.getenv('X402_NETWORK', 'solana-devnet'),
     
-    # Optional: Custom RPC URL (uses public RPC if not specified)
-    # 'rpc_url': 'https://api.devnet.solana.com',
+    # Protected paths - empty by default, use @require_payment() decorator instead
+    'protected_paths': [],
     
     # Optional: Description
     'description': 'Premium Random Number API',
+    
+    # Debug mode (True = simulated, False = requires pre-signed transactions)
+    # Keep True for now - full SPL transfer implementation requires additional client-side setup
+    'debug_mode': os.getenv('X402_DEBUG_MODE', 'True').lower() == 'true',
+    
+    # Optional: Custom RPC URL (if not set, uses public RPC based on network)
+    'rpc_url': os.getenv('X402_RPC_URL'),
+    
+    # Optional: Durable nonce (solves blockhash expiry issue!)
+    'use_durable_nonce': os.getenv('X402_USE_DURABLE_NONCE', 'False').lower() == 'true',
+    'nonce_account_env': 'X402_NONCE_ACCOUNT',
 }
 
 # Display current configuration
@@ -148,8 +184,8 @@ print("=" * 70)
 
 # Validate configuration
 pay_to = X402_CONFIG.get('pay_to_address', '')
-if not pay_to or len(pay_to) < 32:
+if not pay_to or len(pay_to) < 32 or pay_to.startswith('REPLACE'):
     print("⚠️  WARNING: X402_PAY_TO_ADDRESS is not properly configured!")
-    print("   Set a valid Solana address (base58 format)")
-    print("   Example: DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK")
+    print("   Set a valid Solana address (base58 format, 32-44 chars)")
+    print("   Set environment variable: X402_PAY_TO_ADDRESS=YourAddress")
     print("=" * 70)

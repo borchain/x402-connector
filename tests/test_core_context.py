@@ -97,12 +97,12 @@ class TestProcessingResult:
         result = ProcessingResult(
             action='allow',
             payment_verified=True,
-            payer_address='0x1234567890123456789012345678901234567890'
+            payer_address='TestSolanaAddress1234567890123456789012'
         )
         
         assert result.action == 'allow'
         assert result.payment_verified is True
-        assert result.payer_address == '0x1234567890123456789012345678901234567890'
+        assert result.payer_address == 'TestSolanaAddress1234567890123456789012'
     
     def test_invalid_action_raises_error(self):
         """Test that invalid action raises ValueError."""

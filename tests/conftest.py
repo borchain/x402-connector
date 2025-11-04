@@ -35,9 +35,9 @@ try:
                 }
             },
             X402_CONFIG={
-                'network': 'base-sepolia',
+                'network': 'solana-devnet',
                 'price': '$0.01',
-                'pay_to_address': '0x1234567890123456789012345678901234567890',
+                'pay_to_address': 'TestSolanaAddress1234567890123456789012',
                 'protected_paths': ['/api/premium/*'],
             }
         )

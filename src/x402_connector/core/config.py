@@ -23,10 +23,11 @@ class X402Config:
         max_timeout_seconds: Payment validity window. Default: 60
         verify_balance: Check sender has sufficient funds. Default: False
         wait_for_confirmation: Wait for transaction confirmation. Default: False
+        debug_mode: If True, simulate transactions instead of broadcasting. Default: False
     
     Example:
         >>> config = X402Config(
-        ...     pay_to_address='DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+        ...     pay_to_address='YourSolanaAddressHere1234567890123456789012',
         ...     price='$0.01',
         ...     network='solana-devnet',
         ... )
@@ -40,11 +41,20 @@ class X402Config:
     network: str = 'solana-mainnet'
     protected_paths: List[str] = field(default_factory=lambda: ['*'])
     description: str = 'API Access'
+    mime_type: str = 'application/json'
     rpc_url: Optional[str] = None
     signer_key_env: str = 'X402_SIGNER_KEY'
     max_timeout_seconds: int = 60
     verify_balance: bool = False
     wait_for_confirmation: bool = False
+    discoverable: bool = True
+    debug_mode: bool = True  # Set False to broadcast REAL transactions (requires proper setup)
+    use_durable_nonce: bool = False  # Set True to use durable nonces (no blockhash expiry!)
+    nonce_account_env: str = 'X402_NONCE_ACCOUNT'  # Env var for nonce account address
+    
+    # Settlement options
+    settle_policy: str = 'block-on-failure'  # or 'log-and-continue'
+    replay_cache_enabled: bool = True
     
     # Internal configs (for facilitator)
     local: Optional[Dict[str, Any]] = None
@@ -95,6 +105,9 @@ class X402Config:
                 'rpc_url': rpc_url,
                 'verify_balance': self.verify_balance,
                 'wait_for_confirmation': self.wait_for_confirmation,
+                'debug_mode': self.debug_mode,
+                'use_durable_nonce': self.use_durable_nonce,
+                'nonce_account_env': self.nonce_account_env,
             }
     
     @classmethod

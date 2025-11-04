@@ -104,58 +104,26 @@ class X402PaymentProcessor:
                 error='No X-PAYMENT header provided'
             )
         
-        # Parse payment payload
-        try:
-            from x402.encoding import safe_base64_decode
-            payment_dict = json.loads(safe_base64_decode(context.payment_header))
-        except Exception as e:
-            logger.warning(f"Failed to parse payment header: {e}")
+        # Parse payment payload (Solana-specific, no EVM package)
+        payment_dict = self._parse_payment_header(context.payment_header)
+        if not payment_dict:
+            logger.warning("Failed to parse payment header")
             return ProcessingResult(
                 action='deny',
                 requirements=requirements,
                 error='Invalid payment header format'
             )
         
-        # Find matching requirements
-        try:
-            from x402.types import PaymentPayload
-            from x402.common import find_matching_payment_requirements
-            
-            payment = PaymentPayload(**payment_dict)
-            
-            # Convert requirements to PaymentRequirements objects
-            from x402.types import PaymentRequirements
-            requirements_objects = [
-                PaymentRequirements(**req) if isinstance(req, dict) else req
-                for req in requirements
-            ]
-            
-            selected_requirements = find_matching_payment_requirements(
-                requirements_objects,
-                payment
-            )
-        except ImportError:
-            # Fallback if x402 package not available - use simple matching
-            selected_requirements = requirements[0] if requirements else None
-            if payment_dict.get('network') != (selected_requirements or {}).get('network'):
-                selected_requirements = None
-        except Exception as e:
-            logger.warning(f"Failed to match requirements: {e}")
-            selected_requirements = None
+        # Use first requirement (Solana only generates one)
+        req_dict = requirements[0] if requirements else {}
         
-        if not selected_requirements:
+        # Simple network check
+        if payment_dict.get('network') != req_dict.get('network'):
             return ProcessingResult(
                 action='deny',
                 requirements=requirements,
-                error='No matching payment requirements found'
+                error='Network mismatch'
             )
-        
-        # Convert to dict if it's a pydantic model
-        req_dict = selected_requirements
-        if hasattr(selected_requirements, 'model_dump'):
-            req_dict = selected_requirements.model_dump(by_alias=True)
-        elif hasattr(selected_requirements, 'dict'):
-            req_dict = selected_requirements.dict(by_alias=True)
         
         # Verify payment with facilitator
         verification = self.facilitator.verify(payment_dict, req_dict)
@@ -212,40 +180,12 @@ class X402PaymentProcessor:
                 return cached
         
         try:
-            # Parse payment
-            from x402.encoding import safe_base64_decode
-            payment_dict = json.loads(safe_base64_decode(context.payment_header))
+            # Parse payment (Solana-specific, no EVM package needed)
+            payment_dict = self._parse_payment_header(context.payment_header)
             
             # Build requirements
             requirements = self._build_payment_requirements(context)
-            
-            # Find matching requirements
-            try:
-                from x402.types import PaymentPayload
-                from x402.common import find_matching_payment_requirements
-                from x402.types import PaymentRequirements
-                
-                payment = PaymentPayload(**payment_dict)
-                requirements_objects = [
-                    PaymentRequirements(**req) if isinstance(req, dict) else req
-                    for req in requirements
-                ]
-                selected = find_matching_payment_requirements(requirements_objects, payment)
-            except ImportError:
-                selected = requirements[0] if requirements else None
-            
-            if not selected:
-                return SettlementResult(
-                    success=False,
-                    error='No matching requirements for settlement'
-                )
-            
-            # Convert to dict
-            req_dict = selected
-            if hasattr(selected, 'model_dump'):
-                req_dict = selected.model_dump(by_alias=True)
-            elif hasattr(selected, 'dict'):
-                req_dict = selected.dict(by_alias=True)
+            req_dict = requirements[0] if requirements else {}
             
             # Settle via facilitator
             settlement = self.facilitator.settle(payment_dict, req_dict)
@@ -314,63 +254,127 @@ class X402PaymentProcessor:
         self, 
         context: RequestContext
     ) -> List[Any]:
-        """Build payment requirements for this request.
+        """Build payment requirements for Solana.
         
-        Converts price to atomic units, gets EIP-712 domain, and constructs
-        PaymentRequirements object with all necessary information.
+        Constructs payment requirements for Solana blockchain with USDC.
         
         Args:
             context: Request context
             
         Returns:
-            List of PaymentRequirements (usually just one)
+            List of payment requirements (usually just one)
         """
+        # Convert price to atomic units for Solana USDC (6 decimals)
+        max_amount = self._price_to_atomic_units(self.config.price)
+        
+        # Solana USDC mint addresses by network
+        usdc_mints = {
+            'solana-mainnet': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+            'solana-devnet': 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr',
+            'solana-testnet': '8zGuJQqwhZafTah7Uc7Z4tXRnguqkn5KLFAP8oV6PHe2',
+        }
+        
+        asset = usdc_mints.get(self.config.network, usdc_mints['solana-devnet'])
+        
+        # Get durable nonce info from facilitator (if available)
+        nonce_info = None
         try:
-            from x402.common import process_price_to_atomic_amount
-            from x402.types import PaymentRequirements
+            if hasattr(self.facilitator, 'get_durable_nonce_info'):
+                nonce_info = self.facilitator.get_durable_nonce_info()
+        except Exception as e:
+            logger.debug(f"No durable nonce available: {e}")
+        
+        # Build Solana-specific payment requirements
+        requirements = {
+            'scheme': 'exact',
+            'network': self.config.network,
+            'asset': asset,
+            'assetSymbol': 'USDC',
+            'maxAmountRequired': str(max_amount),
+            'resource': context.absolute_url,
+            'description': self.config.description,
+            'mimeType': self.config.mime_type,
+            'payTo': self.config.pay_to_address,
+            'timeout': self.config.max_timeout_seconds,
+        }
+        
+        # Add durable nonce info if available
+        if nonce_info:
+            requirements['durableNonce'] = nonce_info
+            logger.info(f"✅ Including durable nonce: {nonce_info.get('account', 'unknown')[:16]}...")
+        
+        return [requirements]
+    
+    def _price_to_atomic_units(self, price: str) -> int:
+        """Convert price string to atomic units for Solana USDC.
+        
+        Solana USDC has 6 decimals, so 1 USDC = 1,000,000 atomic units.
+        
+        Args:
+            price: Price string (e.g., '$0.01', '10000', '0.01 USDC')
             
-            # Convert price to atomic units and get EIP-712 domain
-            max_amount, asset, eip712_domain = process_price_to_atomic_amount(
-                self.config.price,
-                self.config.network
+        Returns:
+            Amount in atomic units
+            
+        Examples:
+            >>> _price_to_atomic_units('$0.01')
+            10000
+            >>> _price_to_atomic_units('1 USDC')
+            1000000
+            >>> _price_to_atomic_units('10000')
+            10000
+        """
+        price = price.strip()
+        
+        # Already in atomic units (just a number)
+        if price.isdigit():
+            return int(price)
+        
+        # USD format: $0.01
+        if price.startswith('$'):
+            usd_amount = float(price[1:])
+            # Assume 1 USDC = 1 USD
+            return int(usd_amount * 1_000_000)
+        
+        # USDC format: "0.01 USDC" or "1 USDC"
+        if 'USDC' in price.upper():
+            usdc_amount = float(price.split()[0])
+            return int(usdc_amount * 1_000_000)
+        
+        # Try to parse as float and assume it's USDC
+        try:
+            usdc_amount = float(price)
+            return int(usdc_amount * 1_000_000)
+        except ValueError:
+            raise ValueError(
+                f"Invalid price format: {price}. "
+                f"Expected: '$0.01', '10000', '0.01 USDC', or '1.0'"
             )
+    
+    def _parse_payment_header(self, payment_header: str) -> Optional[Dict[str, Any]]:
+        """Parse payment header (handles JSON and base64).
+        
+        Args:
+            payment_header: X-PAYMENT header value
             
-            return [
-                PaymentRequirements(
-                    scheme='exact',
-                    network=self.config.network,
-                    asset=asset,
-                    max_amount_required=max_amount,
-                    resource=context.absolute_url,
-                    description=self.config.description,
-                    mime_type=self.config.mime_type,
-                    pay_to=self.config.pay_to_address,
-                    max_timeout_seconds=self.config.max_timeout_seconds,
-                    output_schema={
-                        'input': {
-                            'type': 'http',
-                            'method': context.method.upper(),
-                            'discoverable': self.config.discoverable,
-                        },
-                        'output': {'type': self.config.mime_type},
-                    },
-                    extra=eip712_domain,
-                )
-            ]
-        except ImportError:
-            # Fallback if x402 package not available
-            logger.warning("x402 package not available, using fallback requirements")
-            return [{
-                'scheme': 'exact',
-                'network': self.config.network,
-                'asset': '0x0000000000000000000000000000000000000000',
-                'maxAmountRequired': '10000',
-                'resource': context.absolute_url,
-                'description': self.config.description,
-                'mimeType': self.config.mime_type,
-                'payTo': self.config.pay_to_address,
-                'maxTimeoutSeconds': self.config.max_timeout_seconds,
-            }]
+        Returns:
+            Parsed payment dict or None if invalid
+        """
+        if not payment_header:
+            return None
+        
+        try:
+            # Try direct JSON parsing first
+            return json.loads(payment_header)
+        except json.JSONDecodeError:
+            pass
+        
+        try:
+            # Try base64 decoding then JSON
+            decoded = base64.b64decode(payment_header).decode('utf-8')
+            return json.loads(decoded)
+        except Exception:
+            return None
     
     def _get_cached_settlement(
         self, 

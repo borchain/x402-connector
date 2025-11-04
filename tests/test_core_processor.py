@@ -17,9 +17,9 @@ class TestX402PaymentProcessor:
     def config(self):
         """Basic test configuration."""
         return X402Config(
-            network='base-sepolia',
+            network='solana-devnet',
             price='$0.01',
-            pay_to_address='0x1234567890123456789012345678901234567890',
+            pay_to_address='TestSolanaAddress1234567890123456789012',
             protected_paths=['/api/premium/*'],
         )
     
@@ -29,6 +29,8 @@ class TestX402PaymentProcessor:
         facilitator = Mock()
         facilitator.verify = Mock(return_value={'isValid': True, 'payer': '0xPAYER'})
         facilitator.settle = Mock(return_value={'success': True, 'transaction': '0xabc123'})
+        # Mock get_durable_nonce_info to return None (no durable nonce in tests)
+        facilitator.get_durable_nonce_info = Mock(return_value=None)
         return facilitator
     
     @pytest.fixture
@@ -47,11 +49,10 @@ class TestX402PaymentProcessor:
         # Just test that a facilitator is created
         processor = X402PaymentProcessor(config)
         
-        # Should have created a facilitator
+        # Should have created a SolanaFacilitator
         assert processor.facilitator is not None
-        # Should be a BaseFacilitator instance
-        from x402_connector.core.facilitators import BaseFacilitator
-        assert hasattr(processor.facilitator, 'verify')
+        from x402_connector.core.facilitators_solana import SolanaFacilitator
+        assert isinstance(processor.facilitator, SolanaFacilitator)
         assert hasattr(processor.facilitator, 'settle')
     
     def test_process_request_unprotected_path(self, processor):
@@ -103,12 +104,12 @@ class TestX402PaymentProcessor:
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'payload': {
                 'signature': '0xdeadbeef',
                 'authorization': {
                     'from': '0xPAYER',
-                    'to': '0x1234567890123456789012345678901234567890',
+                    'to': 'TestSolanaAddress1234567890123456789012',
                     'value': '10000',
                     'validAfter': '0',
                     'validBefore': '9999999999',
@@ -143,7 +144,7 @@ class TestX402PaymentProcessor:
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'payload': {
                 'signature': '0xbadsignature',
                 'authorization': {
@@ -183,12 +184,12 @@ class TestX402PaymentProcessor:
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'payload': {
                 'signature': '0xsignature',
                 'authorization': {
                     'from': '0xPAYER',
-                    'to': '0x1234567890123456789012345678901234567890',
+                    'to': 'TestSolanaAddress1234567890123456789012',
                     'value': '10000',
                     'validAfter': '0',
                     'validBefore': '9999999999',
@@ -226,12 +227,12 @@ class TestX402PaymentProcessor:
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'payload': {
                 'signature': '0xsignature',
                 'authorization': {
                     'from': '0xPAYER',
-                    'to': '0x1234567890123456789012345678901234567890',
+                    'to': 'TestSolanaAddress1234567890123456789012',
                     'value': '10000',
                     'validAfter': '0',
                     'validBefore': '9999999999',
@@ -268,12 +269,12 @@ class TestX402PaymentProcessor:
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'payload': {
                 'signature': '0xsignature',
                 'authorization': {
                     'from': '0xPAYER',
-                    'to': '0x1234567890123456789012345678901234567890',
+                    'to': 'TestSolanaAddress1234567890123456789012',
                     'value': '10000',
                     'validAfter': '0',
                     'validBefore': '9999999999',
@@ -351,9 +352,9 @@ class TestX402PaymentProcessor:
         # Check it's a dict with expected fields
         if isinstance(req, dict):
             assert req['scheme'] == 'exact'
-            assert req['network'] == 'base-sepolia'
+            assert req['network'] == 'solana-devnet'
         else:
             # It's a PaymentRequirements object
             assert req.scheme == 'exact'
-            assert req.network == 'base-sepolia'
+            assert req.network == 'solana-devnet'
 

@@ -1,201 +1,225 @@
-"""Tests for Solana facilitator."""
+"""Tests for Solana facilitator (Solana-only framework)."""
 
 import pytest
 from unittest.mock import Mock, patch
 
 from x402_connector.core.facilitators_solana import SolanaFacilitator
-from x402_connector.core.facilitators_base import detect_chain_type, is_solana_network, is_evm_network
 
-
-class TestChainDetection:
-    """Tests for chain type detection."""
-    
-    def test_detect_solana_networks(self):
-        """Test Solana network detection."""
-        assert is_solana_network('solana') is True
-        assert is_solana_network('solana-mainnet') is True
-        assert is_solana_network('solana-devnet') is True
-        assert is_solana_network('solana-testnet') is True
-        assert is_solana_network('SOLANA-DEVNET') is True  # Case insensitive
-    
-    def test_detect_evm_networks(self):
-        """Test EVM network detection."""
-        assert is_evm_network('base') is True
-        assert is_evm_network('base-mainnet') is True
-        assert is_evm_network('base-sepolia') is True
-        assert is_evm_network('ethereum') is True
-        assert is_evm_network('polygon') is True
-        assert is_evm_network('BASE-SEPOLIA') is True  # Case insensitive
-    
-    def test_detect_chain_type_solana(self):
-        """Test chain type detection for Solana."""
-        assert detect_chain_type('solana-devnet') == 'solana'
-        assert detect_chain_type('solana-mainnet') == 'solana'
-    
-    def test_detect_chain_type_evm(self):
-        """Test chain type detection for EVM."""
-        assert detect_chain_type('base') == 'evm'
-        assert detect_chain_type('base-sepolia') == 'evm'
-        assert detect_chain_type('polygon') == 'evm'
-    
-    def test_detect_chain_type_unknown(self):
-        """Test chain type detection for unknown network."""
-        with pytest.raises(ValueError, match='Unknown network'):
-            detect_chain_type('unknown-chain')
+# Test placeholder addresses (not real wallets)
+TEST_ADDRESS_FROM = 'TestFromAddress1234567890123456789ABC'
+TEST_ADDRESS_TO = 'TestToAddress567890123456789012345678'
 
 
 class TestSolanaFacilitator:
     """Tests for SolanaFacilitator."""
     
     def test_initialization(self):
-        """Test Solana facilitator initialization."""
-        fac = SolanaFacilitator(config={'verify_balance': True})
-        assert fac.config['verify_balance'] is True
-        assert isinstance(fac._used_nonces, set)
+        """Test facilitator initialization."""
+        facilitator = SolanaFacilitator()
+        assert facilitator is not None
+        assert facilitator.config is not None
     
-    def test_verify_basic_fields(self):
-        """Test basic field verification on Solana."""
-        fac = SolanaFacilitator(config={})
-        
-        payment = {
-            'x402Version': 1,
-            'scheme': 'exact',
-            'network': 'solana-devnet',
-            'payload': {
-                'signature': '',  # Empty signature (won't trigger verification)
-                'authorization': {
-                    'from': 'PAYER_ADDRESS',
-                    'to': 'PAYEE_ADDRESS',
-                    'value': '10000',
-                    'validAfter': '0',
-                    'validBefore': '9999999999',
-                    'nonce': 'nonce123',
-                },
-            },
+    def test_initialization_with_config(self):
+        """Test facilitator initialization with custom config."""
+        config = {
+            'private_key_env': 'MY_KEY',
+            'rpc_url_env': 'MY_RPC',
+            'verify_balance': True,
         }
-        
-        requirements = {
-            'scheme': 'exact',
-            'network': 'solana-devnet',
-            'asset': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',  # USDC on Solana
-            'maxAmountRequired': '10000',
-            'payTo': 'PAYEE_ADDRESS',
-            'maxTimeoutSeconds': 60,
-        }
-        
-        result = fac.verify(payment, requirements)
-        assert result['isValid'] is True
-        assert result['payer'] == 'PAYER_ADDRESS'
+        facilitator = SolanaFacilitator(config=config)
+        assert facilitator.config == config
     
     def test_verify_invalid_version(self):
-        """Test verification fails with wrong x402 version."""
-        fac = SolanaFacilitator(config={})
+        """Test payment verification with invalid x402 version."""
+        facilitator = SolanaFacilitator()
         
-        payment = {'x402Version': 2}
-        requirements = {}
+        payment = {
+            'x402Version': 2,  # Invalid version
+            'scheme': 'exact',
+            'network': 'solana-devnet',
+        }
         
-        result = fac.verify(payment, requirements)
+        requirements = {
+            'scheme': 'exact',
+            'network': 'solana-devnet',
+            'payTo': TEST_ADDRESS_TO,
+            'maxAmountRequired': '10000',
+        }
+        
+        result = facilitator.verify(payment, requirements)
         assert result['isValid'] is False
-        assert 'version' in result['invalidReason'].lower()
+        assert 'invalid_x402_version' in result['invalidReason']
+    
+    def test_verify_invalid_scheme(self):
+        """Test payment verification with invalid scheme."""
+        facilitator = SolanaFacilitator()
+        
+        payment = {
+            'x402Version': 1,
+            'scheme': 'invalid',
+            'network': 'solana-devnet',
+        }
+        
+        requirements = {
+            'scheme': 'exact',
+            'network': 'solana-devnet',
+            'payTo': TEST_ADDRESS_TO,
+            'maxAmountRequired': '10000',
+        }
+        
+        result = facilitator.verify(payment, requirements)
+        assert result['isValid'] is False
+        assert 'invalid_scheme' in result['invalidReason']
     
     def test_verify_network_mismatch(self):
-        """Test verification fails with network mismatch."""
-        fac = SolanaFacilitator(config={})
+        """Test payment verification with network mismatch."""
+        facilitator = SolanaFacilitator()
         
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'solana-devnet',
-            'payload': {'authorization': {}, 'signature': ''},
+            'network': 'solana-mainnet',
+            'payload': {
+                'authorization': {},
+                'signature': '',
+            }
         }
         
         requirements = {
             'scheme': 'exact',
-            'network': 'solana-mainnet',  # Different network
+            'network': 'solana-devnet',  # Different network
+            'payTo': TEST_ADDRESS_TO,
+            'maxAmountRequired': '10000',
         }
         
-        result = fac.verify(payment, requirements)
+        result = facilitator.verify(payment, requirements)
         assert result['isValid'] is False
-        assert 'network' in result['invalidReason'].lower()
+        assert 'invalid_network' in result['invalidReason']
     
     def test_verify_recipient_mismatch(self):
-        """Test verification fails with wrong recipient."""
-        fac = SolanaFacilitator(config={})
+        """Test payment verification with recipient mismatch."""
+        facilitator = SolanaFacilitator()
         
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
             'network': 'solana-devnet',
             'payload': {
-                'signature': '',
                 'authorization': {
-                    'to': 'WRONG_ADDRESS',
+                    'from': TEST_ADDRESS_FROM,
+                    'to': 'WrongAddress123456789012345678901234',
                     'value': '10000',
                     'validAfter': '0',
                     'validBefore': '9999999999',
+                    'nonce': '123',
                 },
-            },
+                'signature': '',
+            }
         }
         
         requirements = {
             'scheme': 'exact',
             'network': 'solana-devnet',
-            'payTo': 'RIGHT_ADDRESS',
+            'payTo': TEST_ADDRESS_TO,
             'maxAmountRequired': '10000',
         }
         
-        result = fac.verify(payment, requirements)
+        result = facilitator.verify(payment, requirements)
         assert result['isValid'] is False
-        assert 'recipient' in result['invalidReason'].lower()
+        assert 'recipient_mismatch' in result['invalidReason']
     
-    def test_verify_nonce_replay_protection(self):
-        """Test nonce replay protection on Solana."""
-        fac = SolanaFacilitator(config={})
+    def test_verify_amount_mismatch(self):
+        """Test payment verification with amount mismatch."""
+        facilitator = SolanaFacilitator()
         
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
             'network': 'solana-devnet',
             'payload': {
-                'signature': '',
                 'authorization': {
-                    'from': 'PAYER',
-                    'to': 'PAYEE',
-                    'value': '10000',
+                    'from': TEST_ADDRESS_FROM,
+                    'to': TEST_ADDRESS_TO,
+                    'value': '5000',  # Wrong amount
                     'validAfter': '0',
                     'validBefore': '9999999999',
-                    'nonce': 'unique_nonce_123',
+                    'nonce': '123',
                 },
-            },
+                'signature': '',
+            }
         }
         
         requirements = {
             'scheme': 'exact',
             'network': 'solana-devnet',
-            'payTo': 'PAYEE',
+            'payTo': TEST_ADDRESS_TO,
             'maxAmountRequired': '10000',
         }
         
-        # First use should succeed
-        result1 = fac.verify(payment, requirements)
+        result = facilitator.verify(payment, requirements)
+        assert result['isValid'] is False
+        assert 'amount_mismatch' in result['invalidReason']
+    
+    def test_verify_nonce_reuse(self):
+        """Test payment verification rejects reused nonce."""
+        facilitator = SolanaFacilitator()
+        
+        payment = {
+            'x402Version': 1,
+            'scheme': 'exact',
+            'network': 'solana-devnet',
+            'payload': {
+                'authorization': {
+                    'from': TEST_ADDRESS_FROM,
+                    'to': TEST_ADDRESS_TO,
+                    'value': '10000',
+                    'validAfter': '0',
+                    'validBefore': '9999999999',
+                    'nonce': '42',
+                },
+                'signature': '',
+            }
+        }
+        
+        requirements = {
+            'scheme': 'exact',
+            'network': 'solana-devnet',
+            'payTo': TEST_ADDRESS_TO,
+            'maxAmountRequired': '10000',
+        }
+        
+        # First verification should pass (nonce '42' is new)
+        result1 = facilitator.verify(payment, requirements)
         assert result1['isValid'] is True
         
-        # Second use of same nonce should fail
-        result2 = fac.verify(payment, requirements)
+        # Second verification with same nonce should fail
+        result2 = facilitator.verify(payment, requirements)
         assert result2['isValid'] is False
-        assert 'nonce' in result2['invalidReason'].lower()
+        assert 'nonce_already_used' in result2['invalidReason']
     
-    def test_settle_missing_env_vars(self):
-        """Test settlement fails gracefully when env vars missing."""
-        fac = SolanaFacilitator(config={
-            'private_key_env': 'NONEXISTENT_SOLANA_KEY',
-            'rpc_url_env': 'NONEXISTENT_SOLANA_RPC',
-        })
+    @patch('os.environ.get')
+    def test_settle_missing_private_key(self, mock_environ_get):
+        """Test settlement runs in DEMO mode without private key."""
+        mock_environ_get.return_value = None
         
-        payment = {}
-        requirements = {}
+        facilitator = SolanaFacilitator()
         
-        result = fac.settle(payment, requirements)
-        assert result['success'] is False
-        assert 'not set' in result['error'].lower()
-
+        payment = {
+            'payload': {
+                'authorization': {
+                    'from': TEST_ADDRESS_FROM,
+                    'to': TEST_ADDRESS_TO,
+                    'value': '10000',
+                }
+            }
+        }
+        
+        requirements = {
+            'asset': 'TestUSDCMint123456789012345678901234',
+        }
+        
+        result = facilitator.settle(payment, requirements)
+        # Should succeed in DEMO mode
+        assert result['success'] is True
+        assert 'demo_mode_tx_' in result['transaction']
+        assert 'DEMO MODE' in result['note']

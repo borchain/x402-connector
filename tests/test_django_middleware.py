@@ -51,9 +51,9 @@ class TestX402Middleware:
         """Mock Django settings with X402 config."""
         settings = Mock()
         settings.X402_CONFIG = {
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'price': '$0.01',
-            'pay_to_address': '0x1234567890123456789012345678901234567890',
+            'pay_to_address': 'TestSolanaAddress1234567890123456789012',
             'protected_paths': ['/api/premium/*'],
         }
         return settings
@@ -148,12 +148,12 @@ class TestX402Middleware:
         payment = {
             'x402Version': 1,
             'scheme': 'exact',
-            'network': 'base-sepolia',
+            'network': 'solana-devnet',
             'payload': {
                 'signature': '0xsig',
                 'authorization': {
                     'from': '0xPAYER',
-                    'to': '0x1234567890123456789012345678901234567890',
+                    'to': 'TestSolanaAddress1234567890123456789012',
                     'value': '10000',
                     'validAfter': '0',
                     'validBefore': '9999999999',
