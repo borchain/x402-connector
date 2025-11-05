@@ -1,33 +1,38 @@
-"""Decorators for protecting Django views with x402 payments."""
+"""Decorators for protecting Flask views with x402 payments."""
 
 import logging
 from functools import wraps
 from typing import Optional, Callable
-from django.http import HttpRequest, HttpResponse
+
+from flask import request, current_app, g
 
 from ..core.config import X402Config
 from ..core.processor import X402PaymentProcessor
-from .adapter import DjangoAdapter
+from .adapter import FlaskAdapter
 
 logger = logging.getLogger(__name__)
 
-# Global processor instance (initialized by middleware)
-_processor: Optional[X402PaymentProcessor] = None
-_adapter = DjangoAdapter()
+_adapter = FlaskAdapter()
 
 
-def set_processor(processor: X402PaymentProcessor):
-    """Set global processor instance (called by middleware).
+def _get_processor() -> Optional[X402PaymentProcessor]:
+    """Get processor from Flask app extensions.
     
-    Args:
-        processor: X402PaymentProcessor instance
+    Returns:
+        X402PaymentProcessor instance or None
     """
-    global _processor
-    _processor = processor
+    if not hasattr(current_app, 'extensions'):
+        return None
+    
+    x402_ext = current_app.extensions.get('x402')
+    if x402_ext and hasattr(x402_ext, 'processor'):
+        return x402_ext.processor
+    
+    return None
 
 
 def require_payment(price: Optional[str] = None, description: Optional[str] = None):
-    """Decorator to protect a Django view with payment requirement.
+    """Decorator to protect a Flask view with payment requirement.
     
     Args:
         price: Payment amount (e.g., '$0.01', '10000', '0.01 USDC')
@@ -38,30 +43,41 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
         Decorated view function
     
     Example:
-        >>> from x402_connector.django import require_payment
+        >>> from flask import Flask, jsonify
+        >>> from x402_connector.flask import X402, require_payment
         >>> 
+        >>> app = Flask(__name__)
+        >>> x402 = X402(app, pay_to_address='YOUR_ADDRESS')
+        >>> 
+        >>> @app.route('/premium')
         >>> @require_payment(price='$0.01')
-        >>> def premium_api(request):
-        ...     return JsonResponse({'data': 'premium'})
+        >>> def premium_api():
+        ...     return jsonify({'data': 'premium'})
         >>> 
+        >>> @app.route('/expensive')
         >>> @require_payment(price='$0.10', description='AI Inference')
-        >>> def ai_endpoint(request):
-        ...     return JsonResponse({'result': 'AI response'})
+        >>> def ai_endpoint():
+        ...     return jsonify({'result': 'AI response'})
         >>> 
+        >>> @app.route('/default')
         >>> @require_payment()  # Uses default price
-        >>> def default_price(request):
-        ...     return JsonResponse({'data': 'content'})
+        >>> def default_price():
+        ...     return jsonify({'data': 'content'})
     """
     def decorator(view_func: Callable) -> Callable:
         @wraps(view_func)
-        def wrapper(request: HttpRequest, *args, **kwargs) -> HttpResponse:
-            if _processor is None:
-                # Middleware not configured - return error
-                from django.http import JsonResponse
-                return JsonResponse({
-                    'error': 'x402 middleware not configured',
-                    'detail': 'Add X402Middleware to MIDDLEWARE in settings.py',
-                }, status=500)
+        def wrapper(*args, **kwargs):
+            processor = _get_processor()
+            
+            if processor is None:
+                # Extension not configured - return error
+                from flask import jsonify
+                response = jsonify({
+                    'error': 'x402 extension not configured',
+                    'detail': 'Initialize X402 extension: x402 = X402(app, pay_to_address=...)',
+                })
+                response.status_code = 500
+                return response
             
             # Extract request context
             context = _adapter.extract_request_context(request)
@@ -70,7 +86,6 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
             if price is not None or description is not None:
                 # Create a modified copy of the config using dataclasses.replace
                 from dataclasses import replace
-                from ..core.processor import X402PaymentProcessor
                 
                 kwargs = {}
                 if price is not None:
@@ -78,18 +93,18 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
                 if description is not None:
                     kwargs['description'] = description
                 
-                config = replace(_processor.config, **kwargs)
+                config = replace(processor.config, **kwargs)
                 
                 # Create temporary processor with modified config
-                processor = X402PaymentProcessor(config)
+                temp_processor = X402PaymentProcessor(config)
             else:
-                processor = _processor
+                temp_processor = processor
             
             # For decorator, ALWAYS require payment (bypass path check)
             logger.info(f"🔒 @require_payment: Protecting {context.path} (price={price or 'default'})")
             
             # Build payment requirements
-            requirements = processor._build_payment_requirements(context)
+            requirements = temp_processor._build_payment_requirements(context)
             logger.debug(f"💰 Payment requirements: amount={requirements[0]['maxAmountRequired']}, asset={requirements[0].get('assetSymbol', 'USDC')}")
             
             # Check for payment header
@@ -104,7 +119,7 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
             
             # Verify payment with facilitator
             logger.info(f"🔍 Verifying payment signature...")
-            facilitator = processor.facilitator
+            facilitator = temp_processor.facilitator
             
             import json
             try:
@@ -139,13 +154,18 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
             
             # Payment verified - call the actual view
             logger.info(f"✨ Payment OK - calling view {view_func.__name__}")
-            response = view_func(request, *args, **kwargs)
+            response = view_func(*args, **kwargs)
+            
+            # Convert to Response object if needed
+            from flask import make_response
+            if not hasattr(response, 'status_code'):
+                response = make_response(response)
             
             # If successful response, settle the payment
             if _adapter.is_success_response(response):
                 logger.info(f"💸 Settling payment on Solana blockchain...")
                 # Settle payment
-                settlement = processor.settle_payment(context)
+                settlement = temp_processor.settle_payment(context)
                 if settlement.success:
                     tx_hash = settlement.encoded_response or settlement.transaction_hash or 'demo_settled'
                     logger.info(f"🎉 Payment settled! TX: {tx_hash[:16]}...")
@@ -163,15 +183,15 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
     return decorator
 
 
-def _is_browser_request(request: HttpRequest) -> bool:
+def _is_browser_request(req) -> bool:
     """Check if request appears to be from a web browser.
     
     Args:
-        request: Django HttpRequest
+        req: Flask Request
         
     Returns:
         True if likely a browser, False otherwise
     """
-    accept = request.headers.get('Accept', '')
+    accept = req.headers.get('Accept', '')
     return 'text/html' in accept.lower()
 

@@ -91,6 +91,10 @@ examples/*/db.sqlite3
 examples/*/.env
 examples/*/logs/
 
+# Private keys and sensitive files (NEVER commit these!)
+*-keypair.json
+*.keypair.json
+
 # Documentation builds
 docs/_build/
 docs/_static/

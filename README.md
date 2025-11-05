@@ -190,7 +190,7 @@ pytest tests/test_django_adapter.py
 See the `examples/` directory for complete working examples:
 
 - [Django Example](examples/django/) - Full Django integration with Phantom wallet demo
-- Flask Example - Coming soon
+- [Flask Example](examples/flask/) - Full Flask integration with Phantom wallet demo
 - FastAPI Example - Coming soon
 
 ## Documentation
@@ -217,7 +217,7 @@ See the `examples/` directory for complete working examples:
 | Framework | Version | Status |
 |-----------|---------|--------|
 | Django    | 5.0+    | ✅ Full Support |
-| Flask     | 3.0+    | 🚧 In Progress |
+| Flask     | 3.0+    | ✅ Full Support |
 | FastAPI   | 0.100+  | 🚧 In Progress |
 | Pyramid   | -       | 📋 Planned |
 
