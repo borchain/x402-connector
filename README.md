@@ -83,7 +83,7 @@ def premium_endpoint():
 ### FastAPI Example
 
 ```python
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from x402_connector.fastapi import X402Middleware, require_payment
 
 app = FastAPI()
@@ -95,7 +95,7 @@ async def free_endpoint():
 
 @app.get('/premium')
 @require_payment(price='$0.01')
-async def premium_endpoint():
+async def premium_endpoint(request: Request):
     return {'data': 'premium'}
 ```
 
@@ -191,7 +191,7 @@ See the `examples/` directory for complete working examples:
 
 - [Django Example](examples/django/) - Full Django integration with Phantom wallet demo
 - [Flask Example](examples/flask/) - Full Flask integration with Phantom wallet demo
-- FastAPI Example - Coming soon
+- [FastAPI Example](examples/fastapi/) - Full FastAPI integration with Phantom wallet demo
 
 ## Documentation
 
@@ -218,7 +218,7 @@ See the `examples/` directory for complete working examples:
 |-----------|---------|--------|
 | Django    | 5.0+    | ✅ Full Support |
 | Flask     | 3.0+    | ✅ Full Support |
-| FastAPI   | 0.100+  | 🚧 In Progress |
+| FastAPI   | 0.100+  | ✅ Full Support |
 | Pyramid   | -       | 📋 Planned |
 
 ## License
