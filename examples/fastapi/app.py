@@ -17,32 +17,9 @@ from dotenv import load_dotenv
 from x402_connector.fastapi import X402Middleware, require_payment
 
 # Load environment variables from .env file
-print("=" * 70)
-print("Loading .env file...")
-print("=" * 70)
-
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
-    print(f"✅ Found .env file at: {env_path}")
     load_dotenv(env_path)
-    print("✅ .env file loaded successfully")
-    
-    # Check if X402_SIGNER_KEY is loaded
-    signer_key = os.getenv('X402_SIGNER_KEY', '')
-    if signer_key and len(signer_key) > 10:
-        print(f"🔑 X402_SIGNER_KEY: Loaded ({len(signer_key)} chars)")
-        print(f"   Preview: {signer_key[:20]}...{signer_key[-8:]}")
-        print("   Status: ✅ REAL MODE (transactions will be broadcast)")
-    else:
-        print("⚠️  X402_SIGNER_KEY: NOT SET")
-        print("   Status: ⚠️  DEMO MODE (signatures verified, no real transactions)")
-        print("   To enable: Set X402_SIGNER_KEY in .env file")
-else:
-    print(f"⚠️  No .env file found at: {env_path}")
-    print("   Copy env.example to .env and configure your keys")
-
-print("=" * 70)
-print()
 
 # Initialize FastAPI app
 app = FastAPI(

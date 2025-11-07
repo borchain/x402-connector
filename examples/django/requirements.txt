@@ -3,10 +3,15 @@ Django>=5.0
 
 # Install x402-connector from local source (parent directory)
 # Since package is not published to PyPI yet
--e ../../[django]
+-e ../../[django,solana]
 
 # Environment variable management
 python-dotenv>=1.0.0
+
+# Solana blockchain integration (required for balance checks and settlements)
+solana>=0.36.0
+solders>=0.26.0
+base58>=2.1.0
 
 # Optional: For production
 gunicorn>=21.2.0

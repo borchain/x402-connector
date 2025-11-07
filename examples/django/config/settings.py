@@ -8,36 +8,13 @@ import os
 from pathlib import Path
 
 # Load environment variables from .env file
-print("=" * 70)
-print("Loading .env file...")
-print("=" * 70)
 try:
     from dotenv import load_dotenv
     env_path = Path(__file__).resolve().parent.parent / '.env'
-    
     if env_path.exists():
-        print(f"✅ Found .env file at: {env_path}")
         load_dotenv(env_path)
-        print("✅ .env file loaded successfully")
-        
-        # Check if X402_SIGNER_KEY is loaded
-        signer_key = os.getenv('X402_SIGNER_KEY', '')
-        if signer_key and len(signer_key) > 10:
-            print(f"🔑 X402_SIGNER_KEY: Loaded ({len(signer_key)} chars)")
-            print(f"   Preview: {signer_key[:20]}...{signer_key[-8:]}")
-            print("   Status: ✅ REAL MODE (transactions will be broadcast)")
-        else:
-            print("⚠️  X402_SIGNER_KEY: NOT SET")
-            print("   Status: ⚠️  DEMO MODE (signatures verified, no real transactions)")
-            print("   To enable: Set X402_SIGNER_KEY in .env file")
-    else:
-        print(f"⚠️  No .env file found at: {env_path}")
-        print("   Copy env.example to .env and configure your keys")
 except ImportError:
-    print("⚠️  python-dotenv not installed")
-    print("   Install with: pip install python-dotenv")
-print("=" * 70)
-print()
+    pass
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
