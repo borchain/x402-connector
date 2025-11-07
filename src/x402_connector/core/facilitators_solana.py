@@ -63,18 +63,13 @@ class SolanaFacilitator:
                 # Validate it's not a file path
                 if '/' in nonce_account or '\\' in nonce_account or nonce_account.endswith('.json'):
                     logger.error(f"❌ CONFIGURATION ERROR: {nonce_account_env} must be a Solana ADDRESS, not a file path!")
-                    logger.error(f"   Current value: {nonce_account}")
-                    logger.error(f"   To fix: solana-keygen pubkey {nonce_account}")
+                    logger.error(f"   To fix: solana-keygen pubkey <path_to_keypair>")
                     logger.error(f"   Then set: {nonce_account_env}=<address>")
                     return
                 
                 self._durable_nonce_account = nonce_account
-                logger.info(f"🎯 Durable nonce account configured: {nonce_account[:16]}...")
-                logger.info(f"✅ DURABLE NONCES ENABLED - Transactions NEVER expire!")
             else:
                 logger.warning(f"⚠️  use_durable_nonce=True but {nonce_account_env} not set")
-                logger.warning(f"   Run: solana create-nonce-account nonce.json 0.0015")
-                logger.warning(f"   Then set: {nonce_account_env}=<address>")
         except Exception as e:
             logger.error(f"Failed to initialize durable nonce: {e}")
     
@@ -117,9 +112,6 @@ class SolanaFacilitator:
                     nonce_bytes = bytes(nonce_data[40:72])
                     nonce_value = base64.b64encode(nonce_bytes).decode('utf-8')
                     self._durable_nonce_value = nonce_value
-                    
-                    logger.info(f"✅ Fetched durable nonce: {nonce_value[:16]}...")
-                    logger.info(f"   Authority: {str(authority_pubkey)}")
                     
                     return {
                         'account': self._durable_nonce_account,
@@ -290,19 +282,10 @@ class SolanaFacilitator:
             wait_for_confirmation = bool(local_cfg.get('wait_for_confirmation', False))
             
             # Get private key from environment
-            logger.info(f"🔍 Looking for private key in env var: {priv_key_env}")
             private_key_b58 = os.environ.get(priv_key_env, '')
             
             if not private_key_b58:
-                logger.warning(f"⚠️  Environment variable '{priv_key_env}' is NOT set or empty")
-                logger.warning("   Available env vars with X402:")
-                for key in os.environ:
-                    if 'X402' in key:
-                        value = os.environ[key]
-                        preview = f"{value[:20]}...{value[-8:]}" if len(value) > 30 else value
-                        logger.warning(f"   - {key} = {preview}")
-                logger.warning("⚠️  Running in DEMO MODE - no real transactions")
-                logger.warning("   To enable REAL mode: Set X402_SIGNER_KEY environment variable")
+                logger.warning(f"⚠️  {priv_key_env} not set - running in DEMO MODE")
                 # Return demo mode response
                 tx_signature = f"demo_mode_tx_{int(time.time())}"
                 return {
@@ -310,9 +293,6 @@ class SolanaFacilitator:
                     'transaction': tx_signature,
                     'note': '⚠️ DEMO MODE - Set X402_SIGNER_KEY to enable real transactions'
                 }
-            
-            logger.info(f"✅ Found private key: {private_key_b58[:20]}...{private_key_b58[-8:]} ({len(private_key_b58)} chars)")
-            logger.info("✅ REAL MODE ENABLED - Transactions will be broadcast to Solana!")
             
             # Get RPC URL from config or environment
             rpc_url = local_cfg.get('rpc_url') or os.environ.get(rpc_url_env, '')
@@ -326,9 +306,7 @@ class SolanaFacilitator:
                     rpc_url = 'https://api.devnet.solana.com'
                 logger.info(f"Using default Solana RPC: {rpc_url}")
             else:
-                logger.info(f"Using configured RPC: {rpc_url}")
-            
-            logger.info(f"Connecting to Solana RPC: {rpc_url}")
+                logger.info(f"Using RPC from {rpc_url_env}: {rpc_url}")
             
             # Initialize Solana client
             try:
@@ -350,7 +328,6 @@ class SolanaFacilitator:
             try:
                 private_key_bytes = base58.b58decode(private_key_b58)
                 signer = Keypair.from_bytes(private_key_bytes)
-                logger.info(f"Loaded Solana keypair: {signer.pubkey()}")
             except Exception as e:
                 return {'success': False, 'error': f'Invalid private key: {e}'}
             
@@ -371,12 +348,7 @@ class SolanaFacilitator:
             except Exception as e:
                 return {'success': False, 'error': f'Invalid address: {e}'}
             
-            logger.info(
-                f"💸 SPL Token Transfer: {value} atomic units (${value / 1_000_000:.4f} USDC)"
-            )
-            logger.info(f"   📤 FROM: {from_addr[:8]}... (user's wallet)")
-            logger.info(f"   📥 TO:   {to_addr[:8]}... (server's wallet)")
-            logger.info(f"   💰 Amount: {value} atomic units = ${value / 1_000_000:.4f} USDC")
+            logger.info(f"💸 SPL Token Transfer: {value} atomic units")
             
             # Check debug flag
             debug_mode = bool(local_cfg.get('debug_mode', False))
@@ -394,10 +366,6 @@ class SolanaFacilitator:
             try:
                 # Extract payload from payment
                 payload_data = payment.get('payload', {})
-                
-                # Debug: Log what we received
-                logger.info(f"📦 Payment payload keys: {list(payment.keys())}")
-                logger.info(f"📦 Payload data keys: {list(payload_data.keys())}")
                 
                 # Check if user provided pre-signed transaction
                 signed_tx = payload_data.get('signedTransaction')
@@ -423,8 +391,6 @@ class SolanaFacilitator:
                 
                 # Check if transaction uses durable nonce and add server signature
                 if self._durable_nonce_account:
-                    logger.info("✅ Durable nonce enabled - adding server signature")
-                    
                     # The user has already signed the transaction (partial signature)
                     # Now we add the server's signature for the nonce advance instruction
                     try:
@@ -435,16 +401,9 @@ class SolanaFacilitator:
                         message = transaction.message
                         user_signatures = list(transaction.signatures)
                         
-                        logger.info(f"   Transaction blockhash: {message.recent_blockhash}")
-                        logger.info(f"   Server pubkey: {signer.pubkey()}")
-                        logger.info(f"   Existing signatures: {len(user_signatures)}")
-                        
                         # Sign the message with server's key
                         message_bytes = bytes(message)
                         server_signature = signer.sign_message(message_bytes)
-                        
-                        logger.info(f"✅ Server signed the message")
-                        logger.info(f"   Server signature: {str(server_signature)[:32]}...")
                         
                         # Find the server's position in account_keys
                         server_pubkey = signer.pubkey()
@@ -454,7 +413,6 @@ class SolanaFacilitator:
                         for i, key in enumerate(account_keys):
                             if key == server_pubkey:
                                 server_index = i
-                                logger.info(f"   Server pubkey found at index {i}")
                                 break
                         
                         if server_index is None:
@@ -474,29 +432,15 @@ class SolanaFacilitator:
                         sig_offset = 1 + (server_index * 64)
                         server_sig_bytes = bytes(server_signature)
                         
-                        logger.info(f"   Replacing signature at byte offset {sig_offset}")
-                        logger.info(f"   Server signature length: {len(server_sig_bytes)} bytes")
-                        
                         # Replace the server's signature in the transaction bytes
                         original_tx_bytes[sig_offset:sig_offset+64] = server_sig_bytes
                         
                         # Update tx_bytes with the modified transaction
                         tx_bytes = bytes(original_tx_bytes)
-                        
-                        logger.info("✅ Server signature added for nonce advance")
-                        logger.info(f"   Total signatures: {len(user_signatures)}")
-                        logger.info("   Transaction now has user + server signatures")
                     except Exception as e:
                         logger.error(f"❌ Failed to add server signature: {e}")
-                        logger.error(f"   Exception type: {type(e).__name__}")
-                        logger.error(f"   Exception details: {str(e)}")
                         import traceback
-                        logger.error(f"   Traceback: {traceback.format_exc()}")
-                        logger.info("   Broadcasting with user signature only (will likely fail)")
-                else:
-                    logger.info("ℹ️  Regular transaction (no durable nonce)")
-                
-                logger.info("🚀 Broadcasting transaction to Solana...")
+                        logger.error(f"Traceback: {traceback.format_exc()}")
                 
                 # Try to send the transaction
                 try:
@@ -507,8 +451,6 @@ class SolanaFacilitator:
                         opts=TxOpts(skip_preflight=False, max_retries=3)
                     )
                     tx_signature = str(response.value)
-                    logger.info(f"✅ Transaction sent to mempool!")
-                    logger.info(f"   Signature: {tx_signature}")
                 except Exception as e:
                     error_str = str(e)
                     
@@ -531,15 +473,9 @@ class SolanaFacilitator:
                     logger.error(f"❌ Transaction broadcast failed: {error_str}")
                     raise
                 
-                logger.info(f"✅ Transaction broadcast successful!")
-                logger.info(f"   TX: {tx_signature}")
-                logger.info(f"   View on Solscan: https://solscan.io/tx/{tx_signature}")
-                
                 # Wait for confirmation if enabled
                 if wait_for_confirmation:
-                    logger.info("⏳ Waiting for confirmation...")
                     client.confirm_transaction(response.value)
-                    logger.info("✅ Transaction confirmed!")
                 
                 return {
                     'success': True,

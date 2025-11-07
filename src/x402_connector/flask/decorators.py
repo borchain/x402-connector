@@ -87,13 +87,13 @@ def require_payment(price: Optional[str] = None, description: Optional[str] = No
                 # Create a modified copy of the config using dataclasses.replace
                 from dataclasses import replace
                 
-                kwargs = {}
+                config_kwargs = {}
                 if price is not None:
-                    kwargs['price'] = price
+                    config_kwargs['price'] = price
                 if description is not None:
-                    kwargs['description'] = description
+                    config_kwargs['description'] = description
                 
-                config = replace(processor.config, **kwargs)
+                config = replace(processor.config, **config_kwargs)
                 
                 # Create temporary processor with modified config
                 temp_processor = X402PaymentProcessor(config)
