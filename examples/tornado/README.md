@@ -12,20 +12,45 @@ Interactive demo showing HTTP 402 Payment Required with Solana micropayments usi
 
 ## Quick Start
 
-```bash
-# 1. Install dependencies
-cd examples/tornado
-pip install -r requirements.txt
+### Option 1: Using Setup Script (Recommended)
 
-# 2. Configure environment
+```bash
+cd examples/tornado
+./venv_setup.sh
+source venv/bin/activate
+# Edit .env with your Solana addresses
+python app.py
+```
+
+### Option 2: Manual Setup
+
+```bash
+# 1. Install x402-connector with Tornado support
+cd /path/to/x402-connector  # Go to project root
+pip install -e ".[tornado,solana]"
+
+# 2. Go to example directory
+cd examples/tornado
+
+# 3. Configure environment
 cp env.example .env
 # Edit .env with your Solana addresses
 
-# 3. Run server
+# 4. Run server
 python app.py
 
-# 4. Open browser
+# 5. Open browser
 open http://localhost:8888
+```
+
+### Option 3: Using requirements.txt
+
+```bash
+cd examples/tornado
+pip install -r requirements.txt
+# Note: Still need to install x402-connector from parent: pip install -e ../..
+cp env.example .env
+python app.py
 ```
 
 ## The Code

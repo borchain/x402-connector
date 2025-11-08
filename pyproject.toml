@@ -27,6 +27,7 @@ classifiers = [
   "Framework :: Django",
   "Framework :: Flask",
   "Framework :: FastAPI",
+  "Framework :: Pyramid",
 ]
 
 # Core dependencies (framework-agnostic)
@@ -56,6 +57,13 @@ fastapi = [
   "fastapi>=0.100.0",
   "uvicorn>=0.24.0",
 ]
+tornado = [
+  "tornado>=6.0",
+]
+pyramid = [
+  "pyramid>=2.0",
+  "waitress>=2.1.2",
+]
 
 # Development dependencies
 dev = [
@@ -75,11 +83,12 @@ tests = [
   "respx>=0.21.1",
   "anyio>=4.0.0",
   "hexbytes>=0.3.1",
+  "webtest>=3.0.0",  # For Pyramid tests
 ]
 
 # All frameworks
 all = [
-  "x402-connector[django,flask,fastapi]",
+  "x402-connector[django,flask,fastapi,tornado,pyramid]",
 ]
 
 [project.urls]
