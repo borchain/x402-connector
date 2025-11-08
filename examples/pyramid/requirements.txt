@@ -1,0 +1,10 @@
+pyramid>=2.0
+python-dotenv>=1.0.0
+solana>=0.30.0
+solders>=0.18.0
+base58>=2.1.1
+waitress>=2.1.2
+
+# Install x402-connector from parent directory
+# pip install -e ../..
+

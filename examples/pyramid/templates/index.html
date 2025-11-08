@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>x402 Random Number Generator - Pyramid + Solana Demo</title>
+    <!-- Solana Web3.js from CDN -->
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
+    <script>
+        // Simple base58 encoder (Bitcoin/Solana alphabet)
+        const base58Encode = (bytes) => {
+            const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+            let num = BigInt(0);
+            for (let i = 0; i < bytes.length; i++) {
+                num = num * BigInt(256) + BigInt(bytes[i]);
+            }
+            let encoded = '';
+            while (num > 0) {
+                const remainder = num % BigInt(58);
+                num = num / BigInt(58);
+                encoded = ALPHABET[Number(remainder)] + encoded;
+            }
+            // Handle leading zeros
+            for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+                encoded = ALPHABET[0] + encoded;
+            }
+            return encoded;
+        };
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .sidebar {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+            width: 350px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+        
+        .sidebar h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+        
+        .balance-table {
+            width: 100%;
+        }
+        
+        .balance-row {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .balance-row.hot {
+            border-left-color: #f59e0b;
+        }
+        
+        .balance-row.cold {
+            border-left-color: #10b981;
+        }
+        
+        .balance-row.user {
+            border-left-color: #667eea;
+        }
+        
+        .balance-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .balance-address {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #333;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+        
+        .balance-amounts {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+        
+        .balance-amount {
+            font-weight: 600;
+        }
+        
+        .refresh-btn {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            flex: 1;
+            max-width: 700px;
+        }
+        
+        .warning-box {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .warning-box h3 {
+            color: #92400e;
+            margin-bottom: 8px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .warning-box p {
+            color: #92400e;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+        
+        .flask-badge {
+            display: inline-block;
+            background: #000000;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .wallet-section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .wallet-btn {
+            background: #14F195;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s;
+        }
+        
+        .wallet-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .demo-section {
+            margin-bottom: 30px;
+        }
+        
+        .demo-title {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-free {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge-paid {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            background: #f8fafc;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .result-info {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .success {
+            background: #d1fae5;
+            border-left-color: #10b981;
+        }
+        
+        .error {
+            background: #fee2e2;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+        
+        .warning {
+            background: #fef3c7;
+            border-left-color: #f59e0b;
+            color: #92400e;
+        }
+        
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 30px 0;
+        }
+        
+        .solana-badge {
+            display: inline-block;
+            background: #14F195;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+        
+        .tx-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        
+        .tx-link:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Balance Sidebar -->
+    <div class="sidebar">
+        <h2>💰 Wallet Balances</h2>
+        
+        <div class="balance-table">
+            <div class="balance-row hot">
+                <div class="balance-label">🔥 Server Hot Wallet (Gas)</div>
+                <div class="balance-address" id="hotAddress">Loading...</div>
+                <div class="balance-amounts">
+                    <span><span class="balance-amount" id="hotSOL">0.000</span> SOL</span>
+                    <span><span class="balance-amount" id="hotUSDC">0.00</span> USDC</span>
+                </div>
+            </div>
+            
+            <div class="balance-row cold">
+                <div class="balance-label">❄️ Server Cold Wallet (Receives)</div>
+                <div class="balance-address" id="coldAddress">Loading...</div>
+                <div class="balance-amounts">
+                    <span><span class="balance-amount" id="coldSOL">0.000</span> SOL</span>
+                    <span><span class="balance-amount" id="coldUSDC">0.00</span> USDC</span>
+                </div>
+            </div>
+            
+            <div class="balance-row user">
+                <div class="balance-label">👤 Your Wallet (Pays)</div>
+                <div class="balance-address" id="userAddress">Not connected</div>
+                <div class="balance-amounts">
+                    <span><span class="balance-amount" id="userSOL">0.000</span> SOL</span>
+                    <span><span class="balance-amount" id="userUSDC">0.00</span> USDC</span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="refresh-btn" onclick="window.refreshBalances()" id="refreshBtn">
+            🔄 Refresh Balances
+        </button>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="container">
+        <h1>🎲 x402 Random Number Generator</h1>
+        <p class="subtitle">
+            Flask + Solana Micropayments <span class="solana-badge">⚡ SOLANA</span><span class="flask-badge">🧪 FLASK</span>
+        </p>
+        
+        <!-- Real Money Warning -->
+        <div class="warning-box" id="warningBox">
+            <h3>⚠️ Real Money Warning</h3>
+            <p id="warningText">
+                <strong>Loading network configuration...</strong>
+            </p>
+            <p style="margin-top: 12px; font-size: 0.85rem; opacity: 0.8;" id="debugModeNotice">
+                ⚠️ <strong>MODE:</strong> Check server console for "DEBUG MODE" or "REAL MODE" logs
+            </p>
+        </div>
+        
+        <!-- Wallet Connection -->
+        <div class="wallet-section">
+            <div class="wallet-status">
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 5px;">Phantom Wallet</div>
+                    <div class="wallet-address" id="walletAddress">Not connected</div>
+                </div>
+                <button class="wallet-btn" onclick="window.connectWallet()" id="walletBtn">
+                    Connect Wallet
+                </button>
+            </div>
+        </div>
+        
+        <!-- Free Random Number -->
+        <div class="demo-section">
+            <div class="demo-title">
+                <span>Free Random Number</span>
+                <span class="badge badge-free">FREE</span>
+            </div>
+            <p class="description">
+                Generate a random number between 1-6. No payment required!
+            </p>
+            <button onclick="window.getRandomNumber()" id="freeBtn">
+                🆓 Generate Free Number
+            </button>
+            <div class="result" id="freeResult"></div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Paid Random Number -->
+        <div class="demo-section">
+            <div class="demo-title">
+                <span>Premium Random Number</span>
+                <span class="badge badge-paid">💰 $0.01 USDC</span>
+            </div>
+            <p class="description">
+                Generate a 7-digit random number (1000000-9999999). 
+                Requires $0.01 USDC payment on Solana!
+            </p>
+            <button onclick="window.getPremiumNumber()" id="paidBtn">
+                💎 Generate Premium Number
+            </button>
+            <div class="result" id="paidResult"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Declare variables first
+        let walletConnected = false;
+        let walletPublicKey = null;
+        let connection = null;
+        let currentNetwork = 'solana-mainnet';
+        
+        // SPL Token Program ID
+        const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+        
+        // Helper: Get associated token address (manual calculation)
+        async function getAssociatedTokenAddressSPL(mint, owner) {
+            const seeds = [
+                owner.toBuffer(),
+                new solanaWeb3.PublicKey(TOKEN_PROGRAM_ID).toBuffer(),
+                mint.toBuffer(),
+            ];
+            const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+            const [address] = await solanaWeb3.PublicKey.findProgramAddress(seeds, ASSOCIATED_TOKEN_PROGRAM_ID);
+            return address;
+        }
+        
+        // Connect to Phantom wallet (make it global)
+        window.connectWallet = async function() {
+            try {
+                const isPhantomInstalled = window.solana && window.solana.isPhantom;
+                
+                if (!isPhantomInstalled) {
+                    alert('Phantom wallet is not installed! Please install it from https://phantom.app/');
+                    window.open('https://phantom.app/', '_blank');
+                    return;
+                }
+                
+                const resp = await window.solana.connect();
+                walletPublicKey = resp.publicKey.toString();
+                walletConnected = true;
+                
+                // Update UI
+                document.getElementById('walletAddress').textContent = 
+                    walletPublicKey.substring(0, 4) + '...' + walletPublicKey.substring(walletPublicKey.length - 4);
+                document.getElementById('walletBtn').textContent = 'Connected ✓';
+                document.getElementById('walletBtn').style.background = '#10b981';
+                
+                // Refresh balances
+                await refreshBalances();
+                
+                console.log('Connected to wallet:', walletPublicKey);
+            } catch (err) {
+                console.error('Failed to connect wallet:', err);
+                alert('Failed to connect wallet: ' + err.message);
+            }
+        };
+        
+        // Initialize Solana connection based on backend config
+        async function initConnection() {
+            try {
+                const response = await fetch('/api/balances');
+                const data = await response.json();
+                currentNetwork = data.network || 'solana-devnet';
+                const rpcUrl = data.rpc_url || 'https://api.devnet.solana.com';
+                
+                if (typeof solanaWeb3 !== 'undefined') {
+                    connection = new solanaWeb3.Connection(rpcUrl, 'confirmed');
+                    console.log('✅ Connected to Solana RPC:', rpcUrl);
+                    console.log('✅ Network:', currentNetwork);
+                } else {
+                    console.error('❌ solanaWeb3 not loaded');
+                }
+            } catch (err) {
+                console.error('Failed to initialize connection:', err);
+            }
+        }
+        
+        // Refresh wallet balances (make it global)
+        window.refreshBalances = async function() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '🔄 Refreshing...';
+            
+            try {
+                const url = walletPublicKey 
+                    ? `/api/balances?user_address=${walletPublicKey}`
+                    : '/api/balances';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.balances) {
+                    // Update hot wallet
+                    const hot = data.balances.hot_wallet;
+                    document.getElementById('hotAddress').textContent = 
+                        hot.address.length > 20 ? hot.address.substring(0, 6) + '...' + hot.address.substring(hot.address.length - 4) : hot.address;
+                    document.getElementById('hotSOL').textContent = hot.sol.toFixed(6);
+                    document.getElementById('hotUSDC').textContent = hot.usdc.toFixed(2);
+                    
+                    // Update cold wallet
+                    const cold = data.balances.cold_wallet;
+                    document.getElementById('coldAddress').textContent = 
+                        cold.address.length > 20 ? cold.address.substring(0, 6) + '...' + cold.address.substring(cold.address.length - 4) : cold.address;
+                    document.getElementById('coldSOL').textContent = cold.sol.toFixed(6);
+                    document.getElementById('coldUSDC').textContent = cold.usdc.toFixed(2);
+                    
+                    // Update user wallet
+                    const user = data.balances.user_wallet;
+                    document.getElementById('userAddress').textContent = 
+                        user.address.length > 20 ? user.address.substring(0, 6) + '...' + user.address.substring(user.address.length - 4) : user.address;
+                    document.getElementById('userSOL').textContent = user.sol.toFixed(6);
+                    document.getElementById('userUSDC').textContent = user.usdc.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Failed to refresh balances:', error);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = '🔄 Refresh Balances';
+        }
+        
+        // Free endpoint - no payment required (make it global)
+        window.getRandomNumber = async function() {
+            const btn = document.getElementById('freeBtn');
+            const result = document.getElementById('freeResult');
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 Generating...';
+            
+            try {
+                const response = await fetch('/api/random');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <div class="result-number">${data.number}</div>
+                        <div class="result-info">
+                            ✅ Free number generated!<br>
+                            Range: ${data.range}
+                        </div>
+                    `;
+                    result.classList.remove('error');
+                    result.classList.add('success');
+                } else {
+                    throw new Error(data.error || 'Failed to generate number');
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="result-info">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+                result.classList.add('error');
+            }
+            
+            result.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = '🆓 Generate Free Number';
+        }
+        
+        // Premium endpoint - requires payment
+        window.getPremiumNumber = async function() {
+            const btn = document.getElementById('paidBtn');
+            const result = document.getElementById('paidResult');
+            
+            // Check wallet connection
+            if (!walletConnected) {
+                result.innerHTML = `
+                    <div class="result-info">
+                        ⚠️ Please connect your Phantom wallet first!
+                    </div>
+                `;
+                result.classList.add('warning');
+                result.classList.add('show');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 Processing...';
+            result.classList.remove('error', 'success', 'warning');
+            
+            try {
+                // Step 1: Get payment requirements (402 response)
+                btn.textContent = '📋 Getting payment requirements...';
+                const response1 = await fetch('/api/premium/random');
+                
+                if (response1.status !== 402) {
+                    throw new Error('Expected 402 Payment Required');
+                }
+                
+                const paymentReq = await response1.json();
+                const accepts = paymentReq.accepts[0];
+                const network = accepts.network || 'solana-mainnet';
+                const isMainnet = network === 'solana-mainnet';
+                
+                result.innerHTML = `
+                    <div class="result-info">
+                        💰 Payment Required<br>
+                        Amount: ${accepts.maxAmountRequired} atomic units ($0.01 USDC)<br>
+                        Network: <strong>${network}</strong> ${isMainnet ? '⚡ MAINNET' : '🧪 DEVNET'}<br>
+                        Building transaction...
+                    </div>
+                `;
+                result.classList.add('show');
+                
+                // Step 2: Build SPL token transfer transaction
+                btn.textContent = '🔨 Building SPL transfer...';
+                
+                let signedTxBase64 = null;
+                let signatureBase64 = null;
+                
+                // Declare timing variables at function scope
+                const validAfter = Math.floor(Date.now() / 1000) - 60;
+                const validBefore = Math.floor(Date.now() / 1000) + 300;
+                const nonce = generateNonce();
+                
+                // Try to build real SPL transfer using solanaWeb3
+                if (typeof solanaWeb3 !== 'undefined' && connection) {
+                    try {
+                        console.log('🔨 Building real SPL token transfer...');
+                        
+                        const fromPubkey = new solanaWeb3.PublicKey(walletPublicKey);
+                        const toPubkey = new solanaWeb3.PublicKey(accepts.payTo);
+                        const usdcMint = new solanaWeb3.PublicKey(accepts.asset);
+                        const amount = parseInt(accepts.maxAmountRequired);
+                        
+                        console.log('   From:', fromPubkey.toString());
+                        console.log('   To:', toPubkey.toString());
+                        console.log('   Amount:', amount, 'atomic units');
+                        
+                        // Get associated token accounts
+                        const fromTokenAccount = await getAssociatedTokenAddressSPL(usdcMint, fromPubkey);
+                        const toTokenAccount = await getAssociatedTokenAddressSPL(usdcMint, toPubkey);
+                        
+                        console.log('   From token account:', fromTokenAccount.toString());
+                        console.log('   To token account:', toTokenAccount.toString());
+                        
+                        // Add memo instruction first (shows description in Phantom!)
+                        const memoText = `x402 Payment: $0.01 USDC for Premium Random Number API`;
+                        const memoInstruction = new solanaWeb3.TransactionInstruction({
+                            keys: [],
+                            programId: new solanaWeb3.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+                            data: new TextEncoder().encode(memoText),
+                        });
+                        
+                        console.log('✅ Memo instruction created:', memoText);
+                        
+                        // Build SPL token transfer instruction
+                        const keys = [
+                            { pubkey: fromTokenAccount, isSigner: false, isWritable: true },
+                            { pubkey: usdcMint, isSigner: false, isWritable: false },
+                            { pubkey: toTokenAccount, isSigner: false, isWritable: true },
+                            { pubkey: fromPubkey, isSigner: true, isWritable: false },
+                        ];
+                        
+                        // TransferChecked instruction data
+                        const dataLayout = new Uint8Array(10);
+                        dataLayout[0] = 12; // TransferChecked instruction
+                        const amountBigInt = BigInt(amount);
+                        for (let i = 0; i < 8; i++) {
+                            dataLayout[1 + i] = Number((amountBigInt >> BigInt(i * 8)) & BigInt(0xff));
+                        }
+                        dataLayout[9] = 6; // USDC decimals
+                        
+                        const transferInstruction = new solanaWeb3.TransactionInstruction({
+                            keys: keys,
+                            programId: new solanaWeb3.PublicKey(TOKEN_PROGRAM_ID),
+                            data: dataLayout,
+                        });
+                        
+                        console.log('✅ Transfer instruction created');
+                        
+                        // Get latest blockhash
+                        btn.textContent = '⏱️ Getting fresh blockhash...';
+                        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+                        console.log('✅ Got FRESH blockhash:', blockhash.substring(0, 8) + '... (expires in ~60 seconds)');
+                        
+                        const transaction = new solanaWeb3.Transaction({
+                            feePayer: fromPubkey,
+                            blockhash: blockhash,
+                            lastValidBlockHeight: lastValidBlockHeight,
+                        });
+                        transaction.add(memoInstruction);
+                        transaction.add(transferInstruction);
+                        
+                        console.log('✅ Transaction built');
+                        
+                        // Ask user to sign
+                        btn.textContent = '✍️ Sign in Phantom...';
+                        result.innerHTML = `
+                            <div class="result-info">
+                                💰 Please approve in Phantom!<br>
+                                <small>$0.01 USDC transfer</small>
+                            </div>
+                        `;
+                        
+                        let signedTransaction;
+                        let serializedTx;
+                        try {
+                            signedTransaction = await window.solana.signTransaction(transaction);
+                            console.log('✅ User signed transaction');
+                            
+                            serializedTx = signedTransaction.serialize({ requireAllSignatures: false });
+                            signedTxBase64 = btoa(String.fromCharCode.apply(null, serializedTx));
+                            console.log('✅ Transaction serialized');
+                        } catch (signError) {
+                            console.error('❌ Signing failed:', signError);
+                            throw new Error(`Signing failed: ${signError.message}`);
+                        }
+                        
+                        // Extract signature
+                        const txSignatures = signedTransaction.signatures;
+                        const userSignature = txSignatures[0];
+                        signatureBase64 = btoa(String.fromCharCode.apply(null, userSignature.signature));
+                        
+                        // Create payment payload
+                        const paymentPayload = {
+                            x402Version: 1,
+                            scheme: 'exact',
+                            network: accepts.network,
+                            payload: {
+                                authorization: {
+                                    from: walletPublicKey,
+                                    to: accepts.payTo,
+                                    value: accepts.maxAmountRequired,
+                                    validAfter: validAfter,
+                                    validBefore: validBefore,
+                                    nonce: nonce,
+                                },
+                                signature: signatureBase64,
+                                signedTransaction: signedTxBase64,
+                            }
+                        };
+                        
+                        // Send immediately
+                        btn.textContent = '🚀 Broadcasting to Solana...';
+                        
+                        const response2 = await fetch('/api/premium/random', {
+                            headers: {
+                                'X-PAYMENT': JSON.stringify(paymentPayload)
+                            }
+                        });
+                        
+                        if (response2.ok) {
+                            const data = await response2.json();
+                            const txHash = response2.headers.get('X-PAYMENT-RESPONSE') || 'unknown_tx';
+                            
+                            // Decode response
+                            let actualTxHash = txHash;
+                            try {
+                                const decoded = JSON.parse(atob(txHash));
+                                actualTxHash = decoded.transaction || txHash;
+                            } catch (e) {}
+                            
+                            const solscanUrl = currentNetwork === 'solana-mainnet' 
+                                ? `https://solscan.io/tx/${actualTxHash}`
+                                : `https://solscan.io/tx/${actualTxHash}?cluster=devnet`;
+                            
+                            const isDebugTx = actualTxHash.includes('debug') || actualTxHash.includes('sim') || actualTxHash.includes('expired');
+                            
+                            result.innerHTML = `
+                                <div class="result-number">${data.number}</div>
+                                <div class="result-info">
+                                    🎉 Premium number generated!<br>
+                                    Range: ${data.range}<br>
+                                    💰 Payment settled on <strong>${currentNetwork}</strong><br>
+                                    <small style="opacity: 0.7;">
+                                        📤 Your wallet: -$0.01 USDC<br>
+                                        📥 Server wallet: +$0.01 USDC
+                                    </small><br>
+                                    ${isDebugTx ? '<small style="color: #f59e0b;">⚠️ DEBUG/SIMULATION MODE</small><br>' : ''}
+                                    <a href="${solscanUrl}" 
+                                       target="_blank" class="tx-link">
+                                        View on Solscan ↗
+                                    </a>
+                                    <div style="margin-top: 10px; font-size: 0.8rem; opacity: 0.6;">
+                                        TX: ${actualTxHash}
+                                    </div>
+                                </div>
+                            `;
+                            result.classList.add('success');
+                            
+                            // Refresh balances
+                            setTimeout(() => refreshBalances(), 2000);
+                        } else {
+                            const error = await response2.json();
+                            throw new Error(error.error || 'Payment failed');
+                        }
+                        
+                        // Exit function
+                        btn.disabled = false;
+                        btn.textContent = '💎 Generate Premium Number';
+                        return;
+                        
+                    } catch (txError) {
+                        console.error('❌ Failed to build/sign SPL transfer:', txError);
+                        
+                        // Show error to user
+                        result.innerHTML = `
+                            <div class="result-info">
+                                ❌ Transaction Build Failed<br>
+                                <small style="color: #ef4444;">${txError.message}</small><br>
+                                <small>Check console for details</small>
+                            </div>
+                        `;
+                        result.classList.add('error');
+                        result.classList.add('show');
+                        
+                        btn.disabled = false;
+                        btn.textContent = '💎 Generate Premium Number';
+                        return;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Payment error:', error);
+                result.innerHTML = `
+                    <div class="result-info">
+                        ❌ Error: ${error.message}<br><br>
+                        <small>${error.stack ? 'Check console for details' : ''}</small>
+                    </div>
+                `;
+                result.classList.add('error');
+            }
+            
+            result.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = '💎 Generate Premium Number';
+        }
+        
+        // Helper: Generate random nonce
+        function generateNonce() {
+            return Math.floor(Math.random() * 1000000000).toString();
+        }
+        
+        // Auto-connect and load balances on page load
+        window.addEventListener('load', async () => {
+            // Initialize Solana connection
+            await initConnection();
+            
+            // Try auto-connect to Phantom
+            if (window.solana && window.solana.isPhantom) {
+                try {
+                    const resp = await window.solana.connect({ onlyIfTrusted: true });
+                    if (resp.publicKey) {
+                        walletPublicKey = resp.publicKey.toString();
+                        walletConnected = true;
+                        document.getElementById('walletAddress').textContent = 
+                            walletPublicKey.substring(0, 4) + '...' + walletPublicKey.substring(walletPublicKey.length - 4);
+                        document.getElementById('walletBtn').textContent = 'Connected ✓';
+                        document.getElementById('walletBtn').style.background = '#10b981';
+                    }
+                } catch (err) {
+                    // User not previously connected
+                }
+            }
+            
+            // Detect network and update warning
+            await updateNetworkWarning();
+            
+            // Load balances
+            await refreshBalances();
+        });
+        
+        // Update warning based on network
+        async function updateNetworkWarning() {
+            try {
+                const response = await fetch('/api/balances');
+                const data = await response.json();
+                const network = data.network || 'solana-mainnet';
+                const isMainnet = network === 'solana-mainnet';
+                
+                const warningText = document.getElementById('warningText');
+                const debugNotice = document.getElementById('debugModeNotice');
+                
+                if (isMainnet) {
+                    warningText.innerHTML = `
+                        <strong>⚠️ NETWORK: MAINNET</strong><br>
+                        Connected to <strong>Solana ${network}</strong>. 
+                        Check server logs to see if DEBUG_MODE is enabled.<br>
+                        <span style="margin-top: 8px; display: block;">
+                        • If DEBUG_MODE=True: Transactions simulated (safe testing)<br>
+                        • If DEBUG_MODE=False: <strong>REAL $0.01 USDC transfers!</strong>
+                        </span>
+                        <span style="margin-top: 8px; display: block; font-weight: 600;">
+                        💡 View all transactions on Solscan
+                        </span>
+                    `;
+                } else {
+                    warningText.innerHTML = `
+                        <strong>NETWORK: ${network.toUpperCase()}</strong><br>
+                        Connected to test network. Tokens have no monetary value.<br>
+                        <span style="margin-top: 8px; display: block;">
+                        • Signatures are verified on-chain<br>
+                        • Check X402_DEBUG_MODE in .env to toggle simulation<br>
+                        • Get free USDC at: spl-token-faucet.com
+                        </span>
+                    `;
+                }
+                
+                // Update debug mode notice
+                debugNotice.innerHTML = `
+                    ⚠️ <strong>MODE:</strong> Check server console for "DEBUG MODE" or "REAL MODE" logs
+                `;
+            } catch (err) {
+                console.error('Failed to detect network:', err);
+            }
+        }
+    </script>
+</body>
+</html>
+

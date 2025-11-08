@@ -3,10 +3,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-69%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Django](https://img.shields.io/badge/Django-5.0%2B-092E20?logo=django)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)
 ![Flask](https://img.shields.io/badge/Flask-3.0%2B-000000?logo=flask)
+![Tornado](https://img.shields.io/badge/Tornado-6.0%2B-00A1E0)
+![Pyramid](https://img.shields.io/badge/Pyramid-2.0%2B-EE3322)
 
 **Python SDK for HTTP 402 Payment Required on Solana**
 
@@ -22,9 +24,9 @@ A lightweight, framework-agnostic SDK that adds micropayments to Python web appl
 ## Features
 
 - 🎯 **Simple Integration** - Add `@require_payment` decorator to any endpoint
-- 🌐 **Framework Agnostic** - Works with Django, Flask, FastAPI, and more
+- 🌐 **Framework Agnostic** - Works with Django, Flask, FastAPI, Tornado, Pyramid
 - ⚙️ **Zero Configuration** - Sensible defaults, configure only what you need
-- 🔧 **Production Ready** - 35+ tests passing, comprehensive error handling
+- 🔧 **Production Ready** - Comprehensive error handling and test coverage
 - 📖 **Well Documented** - Clear examples and API reference
 - 🌍 **Corbits Compatible** - Works with https://corbits.dev/ facilitator
 
@@ -97,6 +99,44 @@ async def free_endpoint():
 @require_payment(price='$0.01')
 async def premium_endpoint(request: Request):
     return {'data': 'premium'}
+```
+
+### Tornado Example
+
+```python
+from tornado import web, ioloop
+from x402_connector.tornado import X402Middleware, require_payment
+
+class PremiumHandler(web.RequestHandler):
+    @require_payment(price='$0.01')
+    async def get(self):
+        self.write({'data': 'premium'})
+
+app = web.Application([(r'/premium', PremiumHandler)])
+X402Middleware(app, pay_to_address='YOUR_SOLANA_ADDRESS')
+
+app.listen(8888)
+ioloop.IOLoop.current().start()
+```
+
+### Pyramid Example
+
+```python
+from pyramid.config import Configurator
+from pyramid.response import Response
+from x402_connector.pyramid import require_payment
+
+@require_payment(price='$0.01')
+def premium_view(request):
+    return Response(json.dumps({'data': 'premium'}))
+
+config = Configurator(settings={
+    'x402.pay_to_address': 'YOUR_SOLANA_ADDRESS',
+})
+config.include('x402_connector.pyramid')
+config.add_route('premium', '/premium')
+config.add_view(premium_view, route_name='premium')
+app = config.make_wsgi_app()
 ```
 
 ## How It Works
@@ -192,6 +232,8 @@ See the `examples/` directory for complete working examples:
 - [Django Example](examples/django/) - Full Django integration with Phantom wallet demo
 - [Flask Example](examples/flask/) - Full Flask integration with Phantom wallet demo
 - [FastAPI Example](examples/fastapi/) - Full FastAPI integration with Phantom wallet demo
+- [Tornado Example](examples/tornado/) - Full Tornado integration with async support
+- [Pyramid Example](examples/pyramid/) - Full Pyramid integration with tween middleware
 
 ## Documentation
 
@@ -219,7 +261,8 @@ See the `examples/` directory for complete working examples:
 | Django    | 5.0+    | ✅ Full Support |
 | Flask     | 3.0+    | ✅ Full Support |
 | FastAPI   | 0.100+  | ✅ Full Support |
-| Pyramid   | -       | 📋 Planned |
+| Tornado   | 6.0+    | ✅ Full Support |
+| Pyramid   | 2.0+    | ✅ Full Support |
 
 ## License
 
