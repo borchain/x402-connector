@@ -1,5 +1,8 @@
 # x402-connector
 
+[![PyPI version](https://badge.fury.io/py/x402-connector.svg)](https://badge.fury.io/py/x402-connector)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/x402-connector)](https://pypi.org/project/x402-connector/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/x402-connector)](https://pypi.org/project/x402-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)
@@ -12,7 +15,7 @@
 
 **Python SDK for HTTP 402 Payment Required on Solana**
 
-A lightweight, framework-agnostic SDK that adds micropayments to Python web applications using the x402 protocol on Solana blockchain. Fully compatible with [Corbits.dev](https://corbits.dev/) facilitator.
+A lightweight, framework-agnostic SDK that adds micropayments to Python web applications using the x402 protocol on Solana blockchain.
 
 ## Why Solana?
 
@@ -25,10 +28,10 @@ A lightweight, framework-agnostic SDK that adds micropayments to Python web appl
 
 - 🎯 **Simple Integration** - Add `@require_payment` decorator to any endpoint
 - 🌐 **Framework Agnostic** - Works with Django, Flask, FastAPI, Tornado, Pyramid
+- 🔌 **Multiple Facilitators** - Local, PayAI, Corbits (protocol-compatible)
 - ⚙️ **Zero Configuration** - Sensible defaults, configure only what you need
 - 🔧 **Production Ready** - Comprehensive error handling and test coverage
 - 📖 **Well Documented** - Clear examples and API reference
-- 🌍 **Corbits Compatible** - Works with https://corbits.dev/ facilitator
 
 ## Quick Start
 
@@ -38,106 +41,53 @@ A lightweight, framework-agnostic SDK that adds micropayments to Python web appl
 pip install x402-connector
 ```
 
-### Django Example
+### Usage Example
 
-```python
-# settings.py
-MIDDLEWARE = [
-    'x402_connector.django.X402Middleware',
-]
-
-X402_CONFIG = {
-    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
-}
-
-# views.py
-from x402_connector.django import require_payment
-
-def free_endpoint(request):
-    return JsonResponse({'data': 'free'})
-
-@require_payment(price='$0.01')
-def premium_endpoint(request):
-    return JsonResponse({'data': 'premium'})
-```
-
-That's it! The `premium_endpoint` now requires payment.
-
-### Flask Example
+Add payment requirements to any endpoint with a single decorator:
 
 ```python
 from flask import Flask, jsonify
 from x402_connector.flask import X402, require_payment
+import os
 
 app = Flask(__name__)
-x402 = X402(app, pay_to_address='YOUR_SOLANA_ADDRESS')
 
+# Initialize x402 (one-time setup)
+x402 = X402(app, config={
+    'pay_to_address': os.getenv('X402_PAY_TO_ADDRESS'),
+    'network': 'solana-mainnet',
+    'price': '$0.01',
+})
+
+# Free endpoint - no payment required
 @app.route('/free')
 def free_endpoint():
     return jsonify({'data': 'free'})
 
+# Premium endpoint - requires $0.01 payment
 @app.route('/premium')
 @require_payment(price='$0.01')
 def premium_endpoint():
     return jsonify({'data': 'premium'})
+
+if __name__ == '__main__':
+    app.run(debug=True)
 ```
 
-### FastAPI Example
+### Environment Setup
 
-```python
-from fastapi import FastAPI, Request
-from x402_connector.fastapi import X402Middleware, require_payment
+```bash
+# Required: Your Solana address for receiving payments
+export X402_PAY_TO_ADDRESS=your_solana_address_here
 
-app = FastAPI()
-app.add_middleware(X402Middleware, pay_to_address='YOUR_SOLANA_ADDRESS')
+# Required: Private key for transaction settlement (hot wallet)
+export X402_SIGNER_KEY=your_private_key_base58
 
-@app.get('/free')
-async def free_endpoint():
-    return {'data': 'free'}
-
-@app.get('/premium')
-@require_payment(price='$0.01')
-async def premium_endpoint(request: Request):
-    return {'data': 'premium'}
+# Optional: Network selection (defaults to solana-mainnet)
+export X402_NETWORK=solana-mainnet
 ```
 
-### Tornado Example
-
-```python
-from tornado import web, ioloop
-from x402_connector.tornado import X402Middleware, require_payment
-
-class PremiumHandler(web.RequestHandler):
-    @require_payment(price='$0.01')
-    async def get(self):
-        self.write({'data': 'premium'})
-
-app = web.Application([(r'/premium', PremiumHandler)])
-X402Middleware(app, pay_to_address='YOUR_SOLANA_ADDRESS')
-
-app.listen(8888)
-ioloop.IOLoop.current().start()
-```
-
-### Pyramid Example
-
-```python
-from pyramid.config import Configurator
-from pyramid.response import Response
-from x402_connector.pyramid import require_payment
-
-@require_payment(price='$0.01')
-def premium_view(request):
-    return Response(json.dumps({'data': 'premium'}))
-
-config = Configurator(settings={
-    'x402.pay_to_address': 'YOUR_SOLANA_ADDRESS',
-})
-config.include('x402_connector.pyramid')
-config.add_route('premium', '/premium')
-config.add_view(premium_view, route_name='premium')
-app = config.make_wsgi_app()
-```
+That's it! Your API now requires payment for premium endpoints.
 
 ## How It Works
 
@@ -153,106 +103,204 @@ GET /premium
 402 Payment Required
 {
   "accepts": [{
-    "network": "solana-devnet",
-    "asset": "USDC",
-    "amount": "10000",
+    "network": "solana-mainnet",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "assetSymbol": "USDC",
+    "maxAmountRequired": "10000",
     "payTo": "YOUR_ADDRESS"
   }]
 }
 ```
 
-## Configuration
+## Framework Integration
+
+All frameworks use the same simple decorator pattern:
+
+<details>
+<summary><b>Django</b></summary>
 
 ```python
+# settings.py
+MIDDLEWARE = ['x402_connector.django.X402Middleware']
+
 X402_CONFIG = {
-    # Required
-    'pay_to_address': 'YOUR_SOLANA_ADDRESS',  # Where you receive payments
-    
-    # Optional (sensible defaults)
-    'price': '$0.01',                          # Default price
-    'network': 'solana-mainnet',               # Network (mainnet/devnet/testnet)
-    'rpc_url': None,                           # Custom RPC (uses public by default)
-    'signer_key_env': 'X402_SIGNER_KEY',      # Env var for settlement key
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
+    'network': 'solana-mainnet',
 }
+
+# views.py
+from x402_connector.django import require_payment
+
+@require_payment(price='$0.01')
+def premium_endpoint(request):
+    return JsonResponse({'data': 'premium'})
 ```
 
-## Environment Variables
+[See Django example →](examples/django/)
 
-```bash
-# Required for settlement
-X402_SIGNER_KEY=your_private_key_base58     # Server wallet for gas fees
+</details>
 
-# Optional overrides
-X402_PAY_TO_ADDRESS=your_solana_address     # Payment recipient
-X402_NETWORK=solana-devnet                  # Network override
-X402_RPC_URL=https://api.mainnet-beta.solana.com  # Custom RPC
-```
+<details>
+<summary><b>Flask</b></summary>
 
-## Corbits.dev Compatibility
-
-This SDK is fully compatible with the [Corbits.dev](https://corbits.dev/) facilitator service. You can use it in two modes:
-
-### Local Mode (Self-hosted)
 ```python
-X402_CONFIG = {
-    'pay_to_address': 'YOUR_ADDRESS',
-    # Handles verification and settlement locally
-}
+from flask import Flask
+from x402_connector.flask import X402, require_payment
+
+app = Flask(__name__)
+x402 = X402(app, config={
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
+    'network': 'solana-mainnet',
+})
+
+@app.route('/premium')
+@require_payment(price='$0.01')
+def premium_endpoint():
+    return {'data': 'premium'}
 ```
 
-### Remote Mode (Using Corbits)
+[See Flask example →](examples/flask/)
+
+</details>
+
+<details>
+<summary><b>FastAPI</b></summary>
+
 ```python
-X402_CONFIG = {
-    'pay_to_address': 'YOUR_ADDRESS',
-    'facilitator_mode': 'remote',
-    'remote': {
-        'url': 'https://corbits.dev/api',
-        'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
+from fastapi import FastAPI
+from x402_connector.fastapi import X402Middleware, require_payment
+
+app = FastAPI()
+app.add_middleware(X402Middleware, 
+    pay_to_address='YOUR_SOLANA_ADDRESS',
+    network='solana-mainnet'
+)
+
+@app.get('/premium')
+@require_payment(price='$0.01')
+async def premium_endpoint():
+    return {'data': 'premium'}
+```
+
+[See FastAPI example →](examples/fastapi/)
+
+</details>
+
+<details>
+<summary><b>Tornado</b></summary>
+
+```python
+from tornado import web, ioloop
+from x402_connector.tornado import X402Middleware, require_payment
+
+class PremiumHandler(web.RequestHandler):
+    @require_payment(price='$0.01')
+    async def get(self):
+        self.write({'data': 'premium'})
+
+app = web.Application([(r'/premium', PremiumHandler)])
+X402Middleware(app, pay_to_address='YOUR_SOLANA_ADDRESS', network='solana-mainnet')
+app.listen(8888)
+```
+
+[See Tornado example →](examples/tornado/)
+
+</details>
+
+<details>
+<summary><b>Pyramid</b></summary>
+
+```python
+from pyramid.config import Configurator
+from x402_connector.pyramid import require_payment
+
+@require_payment(price='$0.01')
+def premium_view(request):
+    return {'data': 'premium'}
+
+config = Configurator(settings={
+    'x402.pay_to_address': 'YOUR_SOLANA_ADDRESS',
+    'x402.network': 'solana-mainnet',
+})
+config.include('x402_connector.pyramid')
+```
+
+[See Pyramid example →](examples/pyramid/)
+
+</details>
+
+## Facilitator Support
+
+x402-connector supports multiple facilitator modes for payment processing:
+
+| Facilitator | Status | Description |
+|------------|--------|-------------|
+| **Local** | ✅ Ready | Self-hosted verification and settlement |
+| **PayAI** | ✅ Ready | Managed service at [payai.network](https://payai.network) |
+| **Corbits** | 🔄 Compatible | Protocol-compatible with [corbits.dev](https://corbits.dev) clients |
+| **Hybrid** | 🚧 Planned | Local verification + remote settlement |
+
+### Using PayAI Facilitator
+
+```python
+x402 = X402(app, config={
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
+    'network': 'solana-mainnet',
+    'facilitator_mode': 'payai',
+    'payai': {
+        'facilitator_url': 'https://facilitator.payai.network',
     }
-}
+})
 ```
 
-## Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=x402_connector
-
-# Test specific framework
-pytest tests/test_django_adapter.py
-```
-
-## Examples
-
-See the `examples/` directory for complete working examples:
-
-- [Django Example](examples/django/) - Full Django integration with Phantom wallet demo
-- [Flask Example](examples/flask/) - Full Flask integration with Phantom wallet demo
-- [FastAPI Example](examples/fastapi/) - Full FastAPI integration with Phantom wallet demo
-- [Tornado Example](examples/tornado/) - Full Tornado integration with async support
-- [Pyramid Example](examples/pyramid/) - Full Pyramid integration with tween middleware
+**Learn more:** [Facilitators Integration Guide →](FACILITATORS_INTEGRATION.md)
 
 ## Documentation
 
-- [Quick Start Guide](QUICKSTART.md) - Get started in 5 minutes
-- [API Reference](API.md) - Complete API documentation
-- [Examples](examples/) - Working code examples
+- 📘 **[Quick Start Guide](QUICKSTART.md)** - Get started in 5 minutes
+- 📗 **[API Reference](API.md)** - Complete API documentation
+- 📙 **[Facilitators Guide](FACILITATORS_INTEGRATION.md)** - PayAI, Corbits, local modes
+- 💻 **[Examples](examples/)** - Working code for all frameworks
+- 🔧 **[Installation Guide](INSTALLATION.md)** - Detailed installation instructions
+
+## Configuration
+
+Minimal required configuration:
+
+```python
+{
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',  # Required: where payments go
+}
+```
+
+Common optional settings:
+
+```python
+{
+    'pay_to_address': 'YOUR_SOLANA_ADDRESS',
+    'network': 'solana-mainnet',              # Network selection
+    'price': '$0.01',                         # Default price
+    'facilitator_mode': 'local',              # 'local', 'payai', or 'corbits'
+    'rpc_url': None,                          # Custom RPC endpoint
+    'debug_mode': False,                      # Simulate transactions (testing)
+}
+```
+
+**Learn more:** [API Reference →](API.md)
 
 ## Security Notes
 
 - **Never commit private keys** - Use environment variables
 - **Separate wallets** - Use different addresses for `pay_to_address` (cold) and `signer_key` (hot)
-- **Mainnet readiness** - Test thoroughly on devnet before production
+- **Test on devnet** - Thoroughly test before production deployment
 - **Rate limiting** - Implement rate limiting to prevent abuse
+- **Monitor transactions** - Keep track of payment activity
 
 ## Requirements
 
 - Python 3.10+
-- Solana wallet
-- USDC for payments (or devnet SOL for testing)
+- Solana wallet address
+- USDC for payments (mainnet) or devnet SOL (testing)
 
 ## Framework Support
 
@@ -264,21 +312,45 @@ See the `examples/` directory for complete working examples:
 | Tornado   | 6.0+    | ✅ Full Support |
 | Pyramid   | 2.0+    | ✅ Full Support |
 
-## License
+## Testing
 
-MIT License - see [LICENSE](LICENSE) for details
+```bash
+# Run all tests
+pytest
 
-## Links
+# Run with coverage
+pytest --cov=x402_connector
 
-- [x402 Protocol](https://github.com/coinbase/x402)
-- [Solana Documentation](https://docs.solana.com)
-- [Corbits Facilitator](https://corbits.dev/)
-- [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
+# Test specific framework
+pytest tests/test_flask_adapter.py
+```
+
+## Examples
+
+Complete working examples for each framework:
+
+- **[Django Example](examples/django/)** - Full integration with Phantom wallet demo
+- **[Flask Example](examples/flask/)** - Complete Flask setup with interactive UI
+- **[FastAPI Example](examples/fastapi/)** - Async FastAPI integration
+- **[Tornado Example](examples/tornado/)** - Async Tornado handlers
+- **[Pyramid Example](examples/pyramid/)** - Pyramid views and tweens
+
+## Resources
+
+- **[x402 Protocol](https://github.com/coinbase/x402)** - Official protocol specification
+- **[Solana Documentation](https://docs.solana.com)** - Solana blockchain docs
+- **[PayAI Network](https://payai.network)** - Managed facilitator service
+- **[Corbits Platform](https://corbits.dev/)** - API marketplace and facilitator
+- **[GitHub Repository](https://github.com/borchain/x402-connector)** - Source code
 
 ## Contributing
 
 Contributions welcome! Please open an issue or PR.
 
+## License
+
+MIT License - see [LICENSE](LICENSE) for details
+
 ---
 
-Built with ❤️ for the Solana ecosystem
+**Built with ❤️ for the Solana ecosystem**

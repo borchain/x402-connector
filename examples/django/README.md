@@ -55,7 +55,7 @@ That's it! The decorator handles everything:
 X402_CONFIG = {
     'pay_to_address': 'YOUR_SOLANA_ADDRESS',  # Where payments go
     'price': '$0.01',                         # Default price
-    'network': 'solana-devnet',               # Network
+    'network': 'solana-mainnet',              # Use 'solana-devnet' for testing
 }
 ```
 
@@ -63,9 +63,9 @@ X402_CONFIG = {
 
 ```bash
 # .env
-X402_PAY_TO_ADDRESS=DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK
+X402_PAY_TO_ADDRESS=your_solana_address_here
 X402_SIGNER_KEY=your_base58_private_key
-X402_NETWORK=solana-devnet
+X402_NETWORK=solana-mainnet  # Use 'solana-devnet' for testing
 ```
 
 ## Testing
@@ -85,10 +85,11 @@ curl -i http://localhost:8000/api/premium/random
 # {
 #   "x402Version": 1,
 #   "accepts": [{
-#     "network": "solana-devnet",
-#     "asset": "USDC",
+#     "network": "solana-mainnet",
+#     "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+#     "assetSymbol": "USDC",
 #     "maxAmountRequired": "10000",
-#     "payTo": "DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK"
+#     "payTo": "YOUR_SOLANA_ADDRESS"
 #   }]
 # }
 ```
@@ -248,7 +249,7 @@ Check:
 
 - [Full Documentation](../../README.md)
 - [API Reference](../../API.md)
-- [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
+- [GitHub Issues](https://github.com/borchain/x402-connector/issues)
 
 ---
 

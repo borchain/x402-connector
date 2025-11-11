@@ -33,6 +33,7 @@ classifiers = [
 # Core dependencies (framework-agnostic)
 dependencies = [
   "httpx>=0.27.0",
+  "requests>=2.31.0",  # For PayAI facilitator
   "x402>=0.1.0",
   "eth-account>=0.13.4",
   "web3>=6.20.0",
@@ -99,6 +100,54 @@ Issues = "https://github.com/borchain/x402-connector/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/x402_connector"]
+
+[tool.hatch.build.targets.sdist]
+# Include source code and documentation
+include = [
+  "/src",
+  "/tests",
+  "/README.md",
+  "/LICENSE",
+  "/INSTALLATION.md",
+  "/QUICKSTART.md",
+  "/API.md",
+  "/FACILITATORS_INTEGRATION.md",
+  "/pyproject.toml",
+]
+
+# Explicitly exclude sensitive and unnecessary files
+exclude = [
+  "/.git",
+  "/.github",
+  "/.gitignore",
+  "/.vscode",
+  "/.idea",
+  "/__pycache__",
+  "/*.pyc",
+  "/*.pyo",
+  "/*.egg-info",
+  "/build",
+  "/dist",
+  "/venv",
+  "/.env",
+  "/.env.*",
+  "/examples/*/venv",
+  "/examples/*/django-venv",
+  "/examples/*/.env",
+  "/examples/*/.env.*",
+  "/examples/*/db.sqlite3",
+  "/examples/*/__pycache__",
+  "/webpage",
+  "/webpage.zip",
+  "/WEBSITE_SUMMARY.md",
+  "*.keypair.json",
+  "*-keypair.json",
+  "/.pytest_cache",
+  "/.coverage",
+  "/htmlcov",
+  "/.mypy_cache",
+  "/.ruff_cache",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

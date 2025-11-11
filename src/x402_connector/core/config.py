@@ -56,9 +56,11 @@ class X402Config:
     settle_policy: str = 'block-on-failure'  # or 'log-and-continue'
     replay_cache_enabled: bool = True
     
-    # Internal configs (for facilitator)
-    local: Optional[Dict[str, Any]] = None
-    facilitator_mode: str = 'local'  # Always local for Solana
+    # Facilitator configuration
+    facilitator_mode: str = 'local'  # 'local', 'payai', 'corbits', or 'hybrid'
+    local: Optional[Dict[str, Any]] = None  # Config for local facilitator
+    payai: Optional[Dict[str, Any]] = None  # Config for PayAI facilitator
+    corbits: Optional[Dict[str, Any]] = None  # Config for Corbits facilitator (future)
     
     def __post_init__(self):
         """Validate and set up configuration."""
@@ -87,8 +89,9 @@ class X402Config:
             )
     
     def _setup_local_config(self):
-        """Setup local facilitator configuration."""
-        if self.local is None:
+        """Setup facilitator configurations based on mode."""
+        # Setup local facilitator config (used by 'local' and 'hybrid' modes)
+        if self.local is None and self.facilitator_mode in ['local', 'hybrid']:
             # Get RPC URL
             rpc_url = self.rpc_url
             if not rpc_url:
@@ -108,6 +111,22 @@ class X402Config:
                 'debug_mode': self.debug_mode,
                 'use_durable_nonce': self.use_durable_nonce,
                 'nonce_account_env': self.nonce_account_env,
+            }
+        
+        # Setup PayAI facilitator config
+        if self.payai is None and self.facilitator_mode == 'payai':
+            self.payai = {
+                'facilitator_url': 'https://facilitator.payai.network',
+                'api_key_env': 'PAYAI_API_KEY',
+                'timeout': 30,
+            }
+        
+        # Setup Corbits facilitator config (future)
+        if self.corbits is None and self.facilitator_mode == 'corbits':
+            self.corbits = {
+                'facilitator_url': 'https://api.corbits.dev',
+                'api_key_env': 'CORBITS_API_KEY',
+                'timeout': 30,
             }
     
     @classmethod

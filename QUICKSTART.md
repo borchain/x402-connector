@@ -29,7 +29,7 @@ pip install x402-connector[all]
 ### Option 2: Development Install
 
 ```bash
-git clone https://github.com/yourusername/x402-connector.git
+git clone https://github.com/borchain/x402-connector.git
 cd x402-connector
 pip install -e ".[dev,tests]"
 pytest  # Verify installation
@@ -60,7 +60,7 @@ MIDDLEWARE = [
 X402_CONFIG = {
     'pay_to_address': 'YOUR_SOLANA_ADDRESS',
     'price': '$0.01',  # Default price
-    'network': 'solana-devnet',  # or 'solana-mainnet'
+    'network': 'solana-mainnet',  # Use 'solana-devnet' for testing
 }
 ```
 
@@ -125,7 +125,7 @@ app = Flask(__name__)
 x402 = X402(app, config={
     'pay_to_address': os.getenv('X402_PAY_TO_ADDRESS'),
     'price': '$0.01',
-    'network': 'solana-devnet',
+    'network': 'solana-mainnet',  # Use 'solana-devnet' for testing
 })
 
 @app.route('/free')
@@ -172,7 +172,7 @@ app.add_middleware(
     X402Middleware,
     pay_to_address=os.getenv('X402_PAY_TO_ADDRESS'),
     price='$0.01',
-    network='solana-devnet',
+    network='solana-mainnet',  # Use 'solana-devnet' for testing
 )
 
 @app.get('/free')
@@ -211,9 +211,10 @@ curl -i http://localhost:8000/premium
 #   "status": 402,
 #   "message": "Payment Required",
 #   "accepts": [{
-#     "network": "solana-devnet",
-#     "asset": "USDC",
-#     "amount": "10000",
+#     "network": "solana-mainnet",
+#     "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+#     "assetSymbol": "USDC",
+#     "maxAmountRequired": "10000",
 #     "payTo": "YOUR_ADDRESS"
 #   }]
 # }
@@ -274,9 +275,9 @@ price='0.01 USDC'      # Explicit token
 ### 3. Networks
 
 ```python
-'network': 'solana-mainnet'    # Production
-'network': 'solana-devnet'     # Testing
-'network': 'solana-testnet'    # Staging
+'network': 'solana-mainnet'    # Production (default)
+# 'network': 'solana-devnet'   # For testing with devnet tokens
+# 'network': 'solana-testnet'  # For staging
 ```
 
 ### 4. Wallet Keys
@@ -342,8 +343,8 @@ X402_CONFIG = {
 ## Getting Help
 
 - 📖 [API Reference](API.md)
-- 💬 [GitHub Discussions](https://github.com/yourusername/x402-connector/discussions)
-- 🐛 [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
+- 💬 [GitHub Discussions](https://github.com/borchain/x402-connector/discussions)
+- 🐛 [GitHub Issues](https://github.com/borchain/x402-connector/issues)
 - 💼 [Examples](examples/)
 
 ---

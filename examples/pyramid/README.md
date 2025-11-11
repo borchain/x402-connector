@@ -101,9 +101,9 @@ app = config.make_wsgi_app()
 
 ```bash
 # .env
-X402_PAY_TO_ADDRESS=DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK
+X402_PAY_TO_ADDRESS=your_solana_address_here
 X402_SIGNER_KEY=your_base58_private_key
-X402_NETWORK=solana-devnet
+X402_NETWORK=solana-mainnet  # Use 'solana-devnet' for testing
 ```
 
 ## Testing
@@ -343,7 +343,7 @@ Check:
 
 - [Full Documentation](../../README.md)
 - [API Reference](../../API.md)
-- [GitHub Issues](https://github.com/yourusername/x402-connector/issues)
+- [GitHub Issues](https://github.com/borchain/x402-connector/issues)
 
 ---
 
