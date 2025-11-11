@@ -137,9 +137,7 @@ exclude = [
   "/examples/*/.env.*",
   "/examples/*/db.sqlite3",
   "/examples/*/__pycache__",
-  "/webpage",
-  "/webpage.zip",
-  "/WEBSITE_SUMMARY.md",
+  "/sandbox",
   "*.keypair.json",
   "*-keypair.json",
   "/.pytest_cache",
@@ -147,6 +145,7 @@ exclude = [
   "/htmlcov",
   "/.mypy_cache",
   "/.ruff_cache",
+  "/verify_package.sh",
 ]
 
 [tool.pytest.ini_options]

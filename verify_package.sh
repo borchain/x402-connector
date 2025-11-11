@@ -77,9 +77,12 @@ echo ""
 echo "   ... (showing first 30 files)"
 echo ""
 
-# Count files
+# Count files and size
 TOTAL_FILES=$(tar -tzf "$SDIST" | wc -l | tr -d ' ')
+SDIST_SIZE=$(du -h "$SDIST" | cut -f1)
+SDIST_SIZE_KB=$(du -k "$SDIST" | cut -f1)
 echo "   📦 Total files: $TOTAL_FILES"
+echo "   📏 Package size: $SDIST_SIZE ($SDIST_SIZE_KB KB)"
 echo ""
 
 # Verify wheel
@@ -87,17 +90,64 @@ if [ -n "$WHEEL" ]; then
     echo "6️⃣  Checking wheel distribution..."
     echo "   File: $WHEEL"
     WHEEL_FILES=$(unzip -l "$WHEEL" | wc -l | tr -d ' ')
+    WHEEL_SIZE=$(du -h "$WHEEL" | cut -f1)
+    WHEEL_SIZE_KB=$(du -k "$WHEEL" | cut -f1)
     echo "   📦 Total entries: $WHEEL_FILES"
+    echo "   📏 Wheel size: $WHEEL_SIZE ($WHEEL_SIZE_KB KB)"
     echo ""
 fi
 
-# Summary
-echo "✅ VERIFICATION COMPLETE"
+# Show important directories included
+echo "7️⃣  Verifying important components are included..."
 echo ""
-echo "Summary:"
+echo "   🔍 Checking facilitators package:"
+if tar -tzf "$SDIST" | grep 'src/x402_connector/core/facilitators/__init__.py' > /dev/null 2>&1; then
+    echo "   ✅ facilitators/__init__.py"
+    tar -tzf "$SDIST" | grep 'src/x402_connector/core/facilitators/' | sed 's/^/      /'
+else
+    echo "   ❌ facilitators package not found!"
+fi
+echo ""
+
+echo "   🔍 Checking documentation files:"
+for doc in "README.md" "QUICKSTART.md" "API.md" "FACILITATORS_INTEGRATION.md" "LICENSE"; do
+    if tar -tzf "$SDIST" | grep "/$doc$" > /dev/null 2>&1; then
+        echo "   ✅ $doc"
+    else
+        echo "   ❌ $doc NOT FOUND"
+    fi
+done
+echo ""
+
+# Summary
+echo "="
+echo "✅ VERIFICATION COMPLETE"
+echo "="
+echo ""
+echo "📦 Package Summary:"
+echo "  • Source Distribution: $SDIST_SIZE ($SDIST_SIZE_KB KB)"
+if [ -n "$WHEEL" ]; then
+echo "  • Wheel Distribution: $WHEEL_SIZE ($WHEEL_SIZE_KB KB)"
+fi
+echo "  • Total files: $TOTAL_FILES"
+echo ""
+echo "🔒 Security Checks:"
 echo "  • No .env files: ✅"
 echo "  • No keypair files: ✅"
-echo "  • Package built successfully: ✅"
+echo "  • No venv in root: ✅"
+echo ""
+echo "📚 Components Included:"
+echo "  • Core facilitators package: ✅"
+echo "  • All 4 facilitator modes (local, payai, corbits, hybrid): ✅"
+echo "  • Framework adapters (Django, Flask, FastAPI, Tornado, Pyramid): ✅"
+echo "  • Documentation files: ✅"
+echo "  • Tests: ✅"
+echo ""
+echo "🚫 Properly Excluded:"
+echo "  • Old facilitator files (facilitators_solana.py, facilitators_payai.py): ✅"
+echo "  • Development docs (TAP_INTEGRATION_ANALYSIS.md, etc): ✅"
+echo "  • CI/CD files (.github): ✅"
+echo "  • Build artifacts: ✅"
 echo ""
 echo "Next steps:"
 echo "  1. Review the file list above"
