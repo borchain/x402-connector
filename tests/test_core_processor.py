@@ -49,9 +49,9 @@ class TestX402PaymentProcessor:
         # Just test that a facilitator is created
         processor = X402PaymentProcessor(config)
         
-        # Should have created a SolanaFacilitator
+        # Should have created a SolanaFacilitator (from new package structure)
         assert processor.facilitator is not None
-        from x402_connector.core.facilitators_solana import SolanaFacilitator
+        from x402_connector.core.facilitators.local import SolanaFacilitator
         assert isinstance(processor.facilitator, SolanaFacilitator)
         assert hasattr(processor.facilitator, 'settle')
     

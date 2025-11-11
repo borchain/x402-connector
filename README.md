@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-186%20passed-brightgreen)
 ![Django](https://img.shields.io/badge/Django-5.0%2B-092E20?logo=django)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)
 ![Flask](https://img.shields.io/badge/Flask-3.0%2B-000000?logo=flask)
@@ -237,8 +237,8 @@ x402-connector supports multiple facilitator modes for payment processing:
 |------------|--------|-------------|
 | **Local** | ✅ Ready | Self-hosted verification and settlement |
 | **PayAI** | ✅ Ready | Managed service at [payai.network](https://payai.network) |
-| **Corbits** | 🔄 Compatible | Protocol-compatible with [corbits.dev](https://corbits.dev) clients |
-| **Hybrid** | 🚧 Planned | Local verification + remote settlement |
+| **Corbits** | ✅ Ready | Managed service at [corbits.dev](https://corbits.dev) |
+| **Hybrid** | ✅ Ready | Local verification + remote settlement |
 
 ### Using PayAI Facilitator
 

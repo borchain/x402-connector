@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from x402_connector.core.facilitators_solana import SolanaFacilitator
+from x402_connector.core.facilitators.local import SolanaFacilitator
 
 # Test placeholder addresses (not real wallets)
 TEST_ADDRESS_FROM = 'TestFromAddress1234567890123456789ABC'
