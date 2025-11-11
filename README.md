@@ -269,14 +269,6 @@ Minimal required configuration:
 
 ```python
 {
-    'pay_to_address': 'YOUR_SOLANA_ADDRESS',  # Required: where payments go
-}
-```
-
-Common optional settings:
-
-```python
-{
     'pay_to_address': 'YOUR_SOLANA_ADDRESS',
     'network': 'solana-mainnet',              # Network selection
     'price': '$0.01',                         # Default price
