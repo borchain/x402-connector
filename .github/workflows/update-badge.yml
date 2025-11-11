@@ -1,0 +1,28 @@
+gname: Update Test Badge
+
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types:
+      - completed
+
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+      
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        continue-on-error: true
+        
+      - name: Create test count badge
+        run: |
+          # This creates a static badge endpoint that can be used
+          # The actual test count would need to be extracted from test results
+          echo "Test badge will auto-update from workflow status"
+

@@ -5,13 +5,13 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/x402-connector)](https://pypi.org/project/x402-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
-![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-186%20passed-brightgreen)
-![Django](https://img.shields.io/badge/Django-5.0%2B-092E20?logo=django)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)
-![Flask](https://img.shields.io/badge/Flask-3.0%2B-000000?logo=flask)
-![Tornado](https://img.shields.io/badge/Tornado-6.0%2B-00A1E0)
-![Pyramid](https://img.shields.io/badge/Pyramid-2.0%2B-EE3322)
+[![Solana](https://img.shields.io/badge/Solana-14F195?logo=solana&logoColor=white)](https://solana.com/)
+[![Tests](https://github.com/borchain/x402-connector/actions/workflows/test.yml/badge.svg)](https://github.com/borchain/x402-connector/actions/workflows/test.yml)
+[![Django](https://img.shields.io/badge/Django-5.0%2B-092E20?logo=django)](https://www.djangoproject.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Flask](https://img.shields.io/badge/Flask-3.0%2B-000000?logo=flask)](https://flask.palletsprojects.com/en/stable/)
+[![Tornado](https://img.shields.io/badge/Tornado-6.0%2B-00A1E0)](https://www.tornadoweb.org/en/stable/)
+[![Pyramid](https://img.shields.io/badge/Pyramid-2.0%2B-EE3322)](https://trypyramid.com/)
 
 **Python SDK for HTTP 402 Payment Required on Solana**
 
